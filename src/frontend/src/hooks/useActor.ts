@@ -4,26 +4,26 @@ import type { backendInterface } from "../backend";
 import { createActorWithConfig } from "../config";
 
 const ACTOR_QUERY_KEY = "actor";
+
 export function useActor() {
   const queryClient = useQueryClient();
   const actorQuery = useQuery<backendInterface>({
     queryKey: [ACTOR_QUERY_KEY],
     queryFn: async () => {
-      // Always create an anonymous actor — email/password auth does not use Internet Identity.
+      // Always use anonymous actor for email/password auth
       return await createActorWithConfig();
     },
     staleTime: Number.POSITIVE_INFINITY,
     enabled: true,
   });
 
-  // When the actor becomes available, invalidate and refetch all dependent queries
+  // When the actor changes, invalidate dependent queries
   useEffect(() => {
     if (actorQuery.data) {
       queryClient.invalidateQueries({
-        predicate: (query) => !query.queryKey.includes(ACTOR_QUERY_KEY),
-      });
-      queryClient.refetchQueries({
-        predicate: (query) => !query.queryKey.includes(ACTOR_QUERY_KEY),
+        predicate: (query) => {
+          return !query.queryKey.includes(ACTOR_QUERY_KEY);
+        },
       });
     }
   }, [actorQuery.data, queryClient]);

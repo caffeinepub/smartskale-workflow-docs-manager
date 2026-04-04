@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { Page } from "../App";
 import type { Priority, Project, Task, TaskStatus } from "../backend";
+import { CreateTaskButton, TaskModal } from "../components/TaskModal";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import {
@@ -31,7 +32,6 @@ import {
   SelectValue,
 } from "../components/ui/select";
 import { Skeleton } from "../components/ui/skeleton";
-import { Slider } from "../components/ui/slider";
 import { Textarea } from "../components/ui/textarea";
 import { useActor } from "../hooks/useActor";
 import { CREDENTIALS } from "../hooks/useAuth";
@@ -72,12 +72,6 @@ function getCompletions(): Record<string, number> {
   }
 }
 
-function setCompletion(taskId: string, pct: number) {
-  const all = getCompletions();
-  all[taskId] = pct;
-  localStorage.setItem(COMPLETION_KEY, JSON.stringify(all));
-}
-
 // Team members derived from hardcoded credentials
 const TEAM_MEMBERS = CREDENTIALS.map((c) => ({
   email: c.profile.email,
@@ -92,18 +86,12 @@ export function Tasks({ navigate: _navigate }: Props) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
-  const [open, setOpen] = useState(false);
+
+  // Task Modal state (create/edit)
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<"create" | "edit">("create");
   const [editTask, setEditTask] = useState<Task | null>(null);
-  const [form, setForm] = useState({
-    title: "",
-    description: "",
-    projectId: "",
-    status: "TODO",
-    priority: "MEDIUM",
-    completion: 0,
-    assigneeEmail: UNASSIGNED,
-  });
-  const [saving, setSaving] = useState(false);
+
   const [filterStatus, setFilterStatus] = useState("ALL");
   const [filterPriority, setFilterPriority] = useState("ALL");
   const [search, setSearch] = useState("");
@@ -138,8 +126,7 @@ export function Tasks({ navigate: _navigate }: Props) {
     load();
   }, [actor]);
 
-  // Derive assignee email from assigneeId stored as a string (we store email in tags[0] as a workaround)
-  // We store the assignee email in the task's tags array as a special marker: "assignee:<email>"
+  // Derive assignee email from tags (stored as "assignee:<email>")
   function getAssigneeEmail(t: Task): string {
     const tag = t.tags.find((tag) => tag.startsWith("assignee:"));
     return tag ? tag.replace("assignee:", "") : UNASSIGNED;
@@ -155,7 +142,6 @@ export function Tasks({ navigate: _navigate }: Props) {
   }
 
   function buildTags(existingTags: string[], assigneeEmail: string): string[] {
-    // Remove old assignee tag, add new one
     const filtered = existingTags.filter((t) => !t.startsWith("assignee:"));
     if (assigneeEmail && assigneeEmail !== UNASSIGNED) {
       filtered.push(`assignee:${assigneeEmail}`);
@@ -165,76 +151,14 @@ export function Tasks({ navigate: _navigate }: Props) {
 
   const openCreate = () => {
     setEditTask(null);
-    setForm({
-      title: "",
-      description: "",
-      projectId: projects[0]?.id ?? "",
-      status: "TODO",
-      priority: "MEDIUM",
-      completion: 0,
-      assigneeEmail: UNASSIGNED,
-    });
-    setOpen(true);
+    setModalMode("create");
+    setModalOpen(true);
   };
 
   const openEdit = (t: Task) => {
     setEditTask(t);
-    setForm({
-      title: t.title,
-      description: t.description,
-      projectId: t.projectId,
-      status: getKey(t.status),
-      priority: getKey(t.priority),
-      completion: completions[t.id] ?? 0,
-      assigneeEmail: getAssigneeEmail(t),
-    });
-    setOpen(true);
-  };
-
-  const handleSave = async () => {
-    if (!actor || !form.title.trim()) return;
-    if (!editTask && !form.projectId) {
-      toast.error("Please select a project first");
-      return;
-    }
-    setSaving(true);
-    try {
-      if (editTask) {
-        const newTags = buildTags(editTask.tags, form.assigneeEmail);
-        await actor.updateTask(
-          editTask.id,
-          form.title,
-          form.description,
-          { [form.status]: null } as TaskStatus,
-          { [form.priority]: null } as Priority,
-          [],
-          [],
-          newTags,
-        );
-        setCompletion(editTask.id, form.completion);
-        toast.success("Task updated");
-      } else {
-        const newTags = buildTags([], form.assigneeEmail);
-        const created = await actor.createTask(
-          form.projectId,
-          form.title,
-          form.description,
-          { [form.status]: null } as TaskStatus,
-          { [form.priority]: null } as Priority,
-          [],
-          [],
-          newTags,
-        );
-        setCompletion(created.id, form.completion);
-        toast.success("Task created");
-      }
-      setOpen(false);
-      load();
-    } catch {
-      toast.error("Failed to save task");
-    } finally {
-      setSaving(false);
-    }
+    setModalMode("edit");
+    setModalOpen(true);
   };
 
   const handleDelete = async (id: string) => {
@@ -322,7 +246,6 @@ export function Tasks({ navigate: _navigate }: Props) {
     setAssigning(true);
     try {
       const newTags = buildTags(assignTask.tags, assignEmail);
-      // If forward mode and there is a note, add it as a comment
       if (assignMode === "forward" && forwardNote.trim()) {
         newTags.push(`forward-note:${forwardNote.trim()}`);
       }
@@ -472,14 +395,21 @@ export function Tasks({ navigate: _navigate }: Props) {
                     className="hover:bg-slate-50 transition-colors"
                   >
                     <td className="px-4 py-3">
-                      <div className="font-medium text-slate-800 text-sm">
-                        {t.title}
-                      </div>
-                      {t.description && (
-                        <div className="text-xs text-slate-400 truncate max-w-xs">
-                          {t.description}
+                      <button
+                        type="button"
+                        className="text-left w-full"
+                        onClick={() => openEdit(t)}
+                        title="Click to edit task"
+                      >
+                        <div className="font-medium text-slate-800 text-sm hover:text-blue-600 transition-colors">
+                          {t.title}
                         </div>
-                      )}
+                        {t.description && (
+                          <div className="text-xs text-slate-400 truncate max-w-xs">
+                            {t.description}
+                          </div>
+                        )}
+                      </button>
                     </td>
                     <td className="px-4 py-3 text-sm text-slate-500">
                       {getProjectName(t.projectId)}
@@ -589,137 +519,29 @@ export function Tasks({ navigate: _navigate }: Props) {
         </div>
       )}
 
-      {/* Create / Edit Task Dialog */}
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{editTask ? "Edit Task" : "New Task"}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div>
-              <Label>Title *</Label>
-              <Input
-                value={form.title}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, title: e.target.value }))
-                }
-              />
-            </div>
-            <div>
-              <Label>Description</Label>
-              <Textarea
-                value={form.description}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, description: e.target.value }))
-                }
-                rows={2}
-              />
-            </div>
-            {!editTask && (
-              <div>
-                <Label>Project</Label>
-                <Select
-                  value={form.projectId}
-                  onValueChange={(v) =>
-                    setForm((f) => ({ ...f, projectId: v }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select project" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {projects.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Status</Label>
-                <Select
-                  value={form.status}
-                  onValueChange={(v) => setForm((f) => ({ ...f, status: v }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {["TODO", "IN_PROGRESS", "IN_REVIEW", "DONE"].map((s) => (
-                      <SelectItem key={s} value={s}>
-                        {s.replace("_", " ")}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Priority</Label>
-                <Select
-                  value={form.priority}
-                  onValueChange={(v) => setForm((f) => ({ ...f, priority: v }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {["LOW", "MEDIUM", "HIGH", "URGENT"].map((p) => (
-                      <SelectItem key={p} value={p}>
-                        {p}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div>
-              <Label>Assign To</Label>
-              <Select
-                value={form.assigneeEmail}
-                onValueChange={(v) =>
-                  setForm((f) => ({ ...f, assigneeEmail: v }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select team member" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={UNASSIGNED}>Unassigned</SelectItem>
-                  {TEAM_MEMBERS.map((m) => (
-                    <SelectItem key={m.email} value={m.email}>
-                      {m.name} — {m.jobTitle}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Work Completion: {form.completion}%</Label>
-              <Slider
-                value={[form.completion]}
-                onValueChange={([v]) =>
-                  setForm((f) => ({ ...f, completion: v ?? 0 }))
-                }
-                min={0}
-                max={100}
-                step={5}
-                className="mt-2"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSave} disabled={saving}>
-              {saving ? "Saving..." : editTask ? "Update" : "Create"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Rich Task Create/Edit Modal */}
+      <TaskModal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        mode={modalMode}
+        task={editTask}
+        projects={projects}
+        teamMembers={TEAM_MEMBERS}
+        onSaved={() => {
+          load();
+          setCompletions(getCompletions());
+        }}
+      />
+
+      {/* Floating create button */}
+      <CreateTaskButton
+        projects={projects}
+        teamMembers={TEAM_MEMBERS}
+        onSaved={() => {
+          load();
+          setCompletions(getCompletions());
+        }}
+      />
 
       {/* Transfer Task Dialog */}
       <Dialog
