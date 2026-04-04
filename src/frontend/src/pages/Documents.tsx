@@ -1,5 +1,12 @@
-import { FileText, Plus, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import {
+  Archive,
+  Download,
+  FileText,
+  Plus,
+  Trash2,
+  Upload,
+} from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { Page } from "../App";
 import type { Document as Doc, Project } from "../backend";
@@ -26,6 +33,13 @@ import {
 } from "../components/ui/select";
 import { Skeleton } from "../components/ui/skeleton";
 import { useActor } from "../hooks/useActor";
+import {
+  exportToExcel,
+  exportToPDF,
+  exportToWord,
+  exportToZip,
+  importFromExcel,
+} from "../utils/exportUtils";
 
 interface Props {
   navigate: (p: Page) => void;
@@ -39,6 +53,8 @@ export function Documents({ navigate }: Props) {
   const [search, setSearch] = useState("");
   const [filterProject, setFilterProject] = useState("all");
   const [deleteDoc, setDeleteDoc] = useState<Doc | null>(null);
+  const [exporting, setExporting] = useState("");
+  const importRef = useRef<HTMLInputElement>(null);
 
   const load = () => {
     if (!actor) return;
@@ -78,6 +94,66 @@ export function Documents({ navigate }: Props) {
   const getProjectName = (id: string) =>
     projects.find((p) => p.id === id)?.name || "Unknown";
 
+  const toExportDocs = (list: Doc[]) =>
+    list.map((d) => ({
+      title: d.title,
+      content: d.content,
+      projectName: getProjectName(d.projectId),
+      version: d.version.toString(),
+      updatedAt: new Date(Number(d.updatedAt) / 1_000_000).toLocaleDateString(),
+    }));
+
+  const handleExport = async (type: "excel" | "pdf" | "word" | "zip") => {
+    if (filtered.length === 0) {
+      toast.error("No documents to export");
+      return;
+    }
+    setExporting(type);
+    try {
+      const data = toExportDocs(filtered);
+      if (type === "excel") await exportToExcel(data, "smartskale-documents");
+      else if (type === "pdf") await exportToPDF(data, "smartskale-documents");
+      else if (type === "word")
+        await exportToWord(data, "smartskale-documents");
+      else if (type === "zip") await exportToZip(data, "smartskale-documents");
+      toast.success("Export complete");
+    } catch {
+      toast.error("Export failed");
+    } finally {
+      setExporting("");
+    }
+  };
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !actor) return;
+    try {
+      const rows = await importFromExcel(file);
+      if (rows.length === 0) {
+        toast.error(
+          "No valid rows found. Expected columns: Title, Content, Project",
+        );
+        return;
+      }
+      let created = 0;
+      for (const row of rows) {
+        const proj = projects.find(
+          (p) => p.name.toLowerCase() === row.projectName.toLowerCase(),
+        );
+        const projId = proj?.id ?? projects[0]?.id ?? "";
+        if (!projId) continue;
+        await actor.createDocument(projId, row.title, row.content, []);
+        created++;
+      }
+      toast.success(`Imported ${created} document${created !== 1 ? "s" : ""}`);
+      load();
+    } catch {
+      toast.error("Import failed");
+    } finally {
+      if (importRef.current) importRef.current.value = "";
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -91,6 +167,63 @@ export function Documents({ navigate }: Props) {
           onClick={() => navigate({ name: "document-editor", id: "new" })}
         >
           <Plus className="h-4 w-4 mr-1" /> New Document
+        </Button>
+      </div>
+
+      {/* Import / Export toolbar */}
+      <div className="flex flex-wrap items-center gap-2 p-3 bg-slate-50 rounded-xl border border-slate-200">
+        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide mr-1">
+          Import / Export
+        </span>
+        <input
+          ref={importRef}
+          type="file"
+          accept=".xlsx,.xls"
+          className="hidden"
+          onChange={handleImport}
+        />
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => importRef.current?.click()}
+        >
+          <Upload className="h-3.5 w-3.5 mr-1" /> Import Excel
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={exporting === "excel"}
+          onClick={() => handleExport("excel")}
+        >
+          <Download className="h-3.5 w-3.5 mr-1" />
+          {exporting === "excel" ? "Exporting..." : "Export Excel"}
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={exporting === "word"}
+          onClick={() => handleExport("word")}
+        >
+          <FileText className="h-3.5 w-3.5 mr-1" />
+          {exporting === "word" ? "Exporting..." : "Export Word"}
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={exporting === "pdf"}
+          onClick={() => handleExport("pdf")}
+        >
+          <FileText className="h-3.5 w-3.5 mr-1" />
+          {exporting === "pdf" ? "Exporting..." : "Export PDF"}
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={exporting === "zip"}
+          onClick={() => handleExport("zip")}
+        >
+          <Archive className="h-3.5 w-3.5 mr-1" />
+          {exporting === "zip" ? "Exporting..." : "Export ZIP"}
         </Button>
       </div>
 

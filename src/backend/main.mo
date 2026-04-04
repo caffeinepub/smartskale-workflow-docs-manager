@@ -15,11 +15,39 @@ persistent actor {
   public type TaskStatus = { #TODO; #IN_PROGRESS; #IN_REVIEW; #DONE };
   public type NotifType = { #TASK_ASSIGNED; #TASK_UPDATED; #DOC_UPDATED; #PROJECT_UPDATED };
   public type EntityType = { #TASK; #DOCUMENT };
+  public type UserRole = { #ADMIN; #MANAGER; #EMPLOYEE };
+
+  public type UserProfile = {
+    id: Principal;
+    name: Text;
+    role: Text;
+    department: Text;
+    email: Text;
+    phone: Text;
+    userRole: UserRole;
+    createdAt: Int;
+    updatedAt: Int;
+  };
 
   public type Project = {
     id: Text;
     name: Text;
     description: Text;
+    status: ProjectStatus;
+    priority: Priority;
+    ownerId: Principal;
+    memberIds: [Principal];
+    createdAt: Int;
+    updatedAt: Int;
+    dueDate: ?Int;
+  };
+
+  public type SubProject = {
+    id: Text;
+    parentProjectId: Text;
+    name: Text;
+    description: Text;
+    category: Text;
     status: ProjectStatus;
     priority: Priority;
     ownerId: Principal;
@@ -94,41 +122,49 @@ persistent actor {
     recentActivities: [Activity];
   };
 
-  // ========== STABLE STORAGE (for upgrades) ==========
+  // ========== STABLE STORAGE ==========
 
   var projectEntries: [(Text, Project)] = [];
+  var subProjectEntries: [(Text, SubProject)] = [];
   var taskEntries: [(Text, Task)] = [];
   var documentEntries: [(Text, Document)] = [];
   var notificationEntries: [(Text, Notification)] = [];
   var commentEntries: [(Text, Comment)] = [];
   var activityEntries: [(Text, Activity)] = [];
+  var profileEntries: [(Text, UserProfile)] = [];
   var nextId: Nat = 1;
 
-  // ========== RUNTIME STATE (non-stable HashMaps) ==========
+  // ========== RUNTIME STATE ==========
 
   transient var projects = HashMap.fromIter<Text, Project>(projectEntries.vals(), 10, Text.equal, Text.hash);
+  transient var subProjects = HashMap.fromIter<Text, SubProject>(subProjectEntries.vals(), 10, Text.equal, Text.hash);
   transient var tasks = HashMap.fromIter<Text, Task>(taskEntries.vals(), 10, Text.equal, Text.hash);
   transient var documents = HashMap.fromIter<Text, Document>(documentEntries.vals(), 10, Text.equal, Text.hash);
   transient var notifications = HashMap.fromIter<Text, Notification>(notificationEntries.vals(), 10, Text.equal, Text.hash);
   transient var comments = HashMap.fromIter<Text, Comment>(commentEntries.vals(), 10, Text.equal, Text.hash);
   transient var activityLog = HashMap.fromIter<Text, Activity>(activityEntries.vals(), 10, Text.equal, Text.hash);
+  transient var profiles = HashMap.fromIter<Text, UserProfile>(profileEntries.vals(), 10, Text.equal, Text.hash);
 
   system func preupgrade() {
     projectEntries := Iter.toArray(projects.entries());
+    subProjectEntries := Iter.toArray(subProjects.entries());
     taskEntries := Iter.toArray(tasks.entries());
     documentEntries := Iter.toArray(documents.entries());
     notificationEntries := Iter.toArray(notifications.entries());
     commentEntries := Iter.toArray(comments.entries());
     activityEntries := Iter.toArray(activityLog.entries());
+    profileEntries := Iter.toArray(profiles.entries());
   };
 
   system func postupgrade() {
     projects := HashMap.fromIter<Text, Project>(projectEntries.vals(), 10, Text.equal, Text.hash);
+    subProjects := HashMap.fromIter<Text, SubProject>(subProjectEntries.vals(), 10, Text.equal, Text.hash);
     tasks := HashMap.fromIter<Text, Task>(taskEntries.vals(), 10, Text.equal, Text.hash);
     documents := HashMap.fromIter<Text, Document>(documentEntries.vals(), 10, Text.equal, Text.hash);
     notifications := HashMap.fromIter<Text, Notification>(notificationEntries.vals(), 10, Text.equal, Text.hash);
     comments := HashMap.fromIter<Text, Comment>(commentEntries.vals(), 10, Text.equal, Text.hash);
     activityLog := HashMap.fromIter<Text, Activity>(activityEntries.vals(), 10, Text.equal, Text.hash);
+    profiles := HashMap.fromIter<Text, UserProfile>(profileEntries.vals(), 10, Text.equal, Text.hash);
   };
 
   func genId() : Text {
@@ -148,6 +184,62 @@ persistent actor {
       timestamp = Time.now();
     };
     activityLog.put(id, entry);
+  };
+
+  // ========== USER PROFILES ==========
+
+  public shared(msg) func registerProfile(name: Text, role: Text, department: Text, email: Text, phone: Text, userRole: UserRole) : async UserProfile {
+    let pid = Principal.toText(msg.caller);
+    let now = Time.now();
+    let p : UserProfile = {
+      id = msg.caller;
+      name = name;
+      role = role;
+      department = department;
+      email = email;
+      phone = phone;
+      userRole = userRole;
+      createdAt = now;
+      updatedAt = now;
+    };
+    profiles.put(pid, p);
+    p
+  };
+
+  public query(msg) func getMyProfile() : async ?UserProfile {
+    let pid = Principal.toText(msg.caller);
+    profiles.get(pid)
+  };
+
+  public query func getAllProfiles() : async [UserProfile] {
+    Iter.toArray(profiles.vals())
+  };
+
+  public query func getProfile(principal: Principal) : async ?UserProfile {
+    let pid = Principal.toText(principal);
+    profiles.get(pid)
+  };
+
+  public shared(msg) func updateProfile(name: Text, role: Text, department: Text, email: Text, phone: Text, userRole: UserRole) : async ?UserProfile {
+    let pid = Principal.toText(msg.caller);
+    switch (profiles.get(pid)) {
+      case null { null };
+      case (?existing) {
+        let updated : UserProfile = {
+          id = existing.id;
+          name = name;
+          role = role;
+          department = department;
+          email = email;
+          phone = phone;
+          userRole = userRole;
+          createdAt = existing.createdAt;
+          updatedAt = Time.now();
+        };
+        profiles.put(pid, updated);
+        ?updated
+      };
+    }
   };
 
   // ========== PROJECTS ==========
@@ -208,6 +300,78 @@ persistent actor {
       case null { false };
       case (?_) {
         logActivity(msg.caller, "DELETE", "PROJECT", id);
+        true
+      };
+    }
+  };
+
+  // ========== SUB-PROJECTS ==========
+
+  public shared(msg) func createSubProject(parentProjectId: Text, name: Text, description: Text, category: Text, status: ProjectStatus, priority: Priority, dueDate: ?Int) : async SubProject {
+    let id = genId();
+    let now = Time.now();
+    let sp : SubProject = {
+      id = id;
+      parentProjectId = parentProjectId;
+      name = name;
+      description = description;
+      category = category;
+      status = status;
+      priority = priority;
+      ownerId = msg.caller;
+      memberIds = [msg.caller];
+      createdAt = now;
+      updatedAt = now;
+      dueDate = dueDate;
+    };
+    subProjects.put(id, sp);
+    logActivity(msg.caller, "CREATE", "SUBPROJECT", id);
+    sp
+  };
+
+  public query func getSubProjects() : async [SubProject] {
+    Iter.toArray(subProjects.vals())
+  };
+
+  public query func getSubProjectsByParent(parentProjectId: Text) : async [SubProject] {
+    let all = Iter.toArray(subProjects.vals());
+    Array.filter(all, func(sp: SubProject) : Bool { sp.parentProjectId == parentProjectId })
+  };
+
+  public query func getSubProject(id: Text) : async ?SubProject {
+    subProjects.get(id)
+  };
+
+  public shared(msg) func updateSubProject(id: Text, name: Text, description: Text, category: Text, status: ProjectStatus, priority: Priority, dueDate: ?Int, memberIds: [Principal]) : async ?SubProject {
+    switch (subProjects.get(id)) {
+      case null { null };
+      case (?sp) {
+        let updated : SubProject = {
+          id = sp.id;
+          parentProjectId = sp.parentProjectId;
+          name = name;
+          description = description;
+          category = category;
+          status = status;
+          priority = priority;
+          ownerId = sp.ownerId;
+          memberIds = memberIds;
+          createdAt = sp.createdAt;
+          updatedAt = Time.now();
+          dueDate = dueDate;
+        };
+        subProjects.put(id, updated);
+        logActivity(msg.caller, "UPDATE", "SUBPROJECT", id);
+        ?updated
+      };
+    }
+  };
+
+  public shared(msg) func deleteSubProject(id: Text) : async Bool {
+    switch (subProjects.remove(id)) {
+      case null { false };
+      case (?_) {
+        logActivity(msg.caller, "DELETE", "SUBPROJECT", id);
         true
       };
     }

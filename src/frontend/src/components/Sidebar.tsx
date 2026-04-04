@@ -8,6 +8,7 @@ import {
   Users,
 } from "lucide-react";
 import type { Page } from "../App";
+import { useUserProfile } from "../hooks/useUserProfile";
 
 interface Props {
   currentPage: Page;
@@ -27,6 +28,7 @@ const NAV_ITEMS = [
 
 export function Sidebar({ currentPage, navigate, onClose }: Props) {
   const isActive = (name: string) => currentPage.name === name;
+  const { profile } = useUserProfile();
 
   return (
     <aside className="w-64 h-full bg-slate-900 flex flex-col">
@@ -49,6 +51,7 @@ export function Sidebar({ currentPage, navigate, onClose }: Props) {
           <button
             type="button"
             key={name}
+            data-ocid={`sidebar.${name}.link`}
             onClick={() => {
               navigate({ name } as Page);
               onClose();
@@ -65,11 +68,32 @@ export function Sidebar({ currentPage, navigate, onClose }: Props) {
         ))}
       </nav>
 
-      {/* Footer */}
+      {/* Footer: user profile or powered-by */}
       <div className="p-3 border-t border-slate-800">
-        <div className="text-xs text-slate-600 text-center">
-          Powered by Internet Computer
-        </div>
+        {profile ? (
+          <div className="flex items-center gap-2.5 px-1">
+            <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+              {profile.name
+                .split(" ")
+                .map((n) => n[0])
+                .join("")
+                .toUpperCase()
+                .slice(0, 2)}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-white text-xs font-semibold truncate">
+                {profile.name}
+              </div>
+              <div className="text-slate-400 text-[10px] truncate">
+                {profile.role}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="text-xs text-slate-600 text-center">
+            Powered by Internet Computer
+          </div>
+        )}
       </div>
     </aside>
   );

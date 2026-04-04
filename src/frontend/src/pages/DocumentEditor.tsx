@@ -1,10 +1,16 @@
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, ChevronDown, FileText, Save } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { Page } from "../App";
 import type { Project } from "../backend";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../components/ui/dropdown-menu";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import {
@@ -16,6 +22,11 @@ import {
 } from "../components/ui/select";
 import { Skeleton } from "../components/ui/skeleton";
 import { useActor } from "../hooks/useActor";
+import {
+  exportSingleDocPDF,
+  exportSingleDocTxt,
+  exportSingleDocWord,
+} from "../utils/exportUtils";
 
 interface Props {
   docId: string;
@@ -32,6 +43,7 @@ export function DocumentEditor({ docId, navigate }: Props) {
   const [version, setVersion] = useState<bigint>(1n);
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
+  const [exporting, setExporting] = useState("");
 
   useEffect(() => {
     if (!actor) return;
@@ -54,7 +66,18 @@ export function DocumentEditor({ docId, navigate }: Props) {
   }, [actor, docId, isNew]);
 
   const save = async () => {
-    if (!actor || !title.trim()) return;
+    if (!title.trim()) {
+      toast.error("Please enter a document title");
+      return;
+    }
+    if (!actor) {
+      toast.error("Not connected — please refresh the page");
+      return;
+    }
+    if (isNew && !projectId) {
+      toast.error("Please select a project");
+      return;
+    }
     setSaving(true);
     try {
       if (isNew) {
@@ -67,9 +90,27 @@ export function DocumentEditor({ docId, navigate }: Props) {
       }
       navigate({ name: "documents" });
     } catch {
-      toast.error("Failed to save document");
+      toast.error("Failed to save document — please try again");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleExport = async (type: "pdf" | "word" | "txt") => {
+    if (!title.trim()) {
+      toast.error("Add a title before exporting");
+      return;
+    }
+    setExporting(type);
+    try {
+      if (type === "pdf") await exportSingleDocPDF(title, content);
+      else if (type === "word") await exportSingleDocWord(title, content);
+      else exportSingleDocTxt(title, content);
+      toast.success("Exported successfully");
+    } catch {
+      toast.error("Export failed");
+    } finally {
+      setExporting("");
     }
   };
 
@@ -99,7 +140,30 @@ export function DocumentEditor({ docId, navigate }: Props) {
             v{version.toString()}
           </Badge>
         )}
-        <Button onClick={save} disabled={saving || !title.trim()}>
+
+        {/* Export dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" disabled={exporting !== ""}>
+              <FileText className="h-4 w-4 mr-1" />
+              {exporting ? "Exporting..." : "Export"}
+              <ChevronDown className="h-3.5 w-3.5 ml-1" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => handleExport("pdf")}>
+              Export as PDF
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleExport("word")}>
+              Export as Word (.docx)
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleExport("txt")}>
+              Export as TXT
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <Button onClick={save} disabled={saving}>
           <Save className="h-4 w-4 mr-1" />
           {saving ? "Saving..." : "Save"}
         </Button>

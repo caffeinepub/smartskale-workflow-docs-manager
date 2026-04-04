@@ -1,0 +1,1526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SmartSkale — Enterprise Workflow Manager</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#0f172a;--navy2:#1e293b;--navy3:#334155;
+  --accent:#f59e0b;--accent2:#d97706;
+  --green:#10b981;--red:#ef4444;--blue:#3b82f6;--purple:#8b5cf6;--orange:#f97316;
+  --bg:#f1f5f9;--card:#fff;--border:#e2e8f0;--text:#0f172a;--muted:#64748b;
+  --sidebar-w:240px;
+}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;font-size:14px}
+a{text-decoration:none;color:inherit}
+button{cursor:pointer;font-family:inherit;font-size:13px}
+input,select,textarea{font-family:inherit;font-size:13px}
+
+/* SIDEBAR */
+#sidebar{width:var(--sidebar-w);background:var(--navy);min-height:100vh;display:flex;flex-direction:column;flex-shrink:0;position:fixed;top:0;left:0;bottom:0;z-index:100;overflow-y:auto}
+.logo{padding:20px 20px 16px;border-bottom:1px solid rgba(255,255,255,.08)}
+.logo h1{color:#fff;font-size:18px;font-weight:700;letter-spacing:-.3px}
+.logo span{color:var(--accent);font-size:11px;letter-spacing:1.5px;text-transform:uppercase;display:block;margin-top:2px}
+.user-select{padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.08)}
+.user-select label{color:rgba(255,255,255,.5);font-size:10px;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:6px}
+.user-select select{width:100%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);color:#fff;padding:7px 10px;border-radius:6px}
+.user-select select option{background:#1e293b;color:#fff}
+nav{padding:10px 0;flex:1}
+.nav-section{padding:10px 16px 4px;color:rgba(255,255,255,.3);font-size:10px;text-transform:uppercase;letter-spacing:1.2px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 16px;color:rgba(255,255,255,.65);cursor:pointer;transition:.15s;margin:1px 8px;border-radius:6px;font-size:13px}
+.nav-item:hover{background:rgba(255,255,255,.07);color:#fff}
+.nav-item.active{background:var(--accent);color:#0f172a;font-weight:600}
+.nav-item svg{width:16px;height:16px;flex-shrink:0}
+.nav-badge{margin-left:auto;background:var(--red);color:#fff;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:700}
+.sidebar-footer{padding:14px 16px;border-top:1px solid rgba(255,255,255,.08)}
+.sidebar-footer p{color:rgba(255,255,255,.35);font-size:10px;text-align:center}
+
+/* MAIN */
+#main{margin-left:var(--sidebar-w);flex:1;min-height:100vh;display:flex;flex-direction:column}
+.topbar{background:var(--card);border-bottom:1px solid var(--border);padding:0 24px;height:58px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:50}
+.topbar-title{font-size:16px;font-weight:600;flex:1}
+.topbar-actions{display:flex;gap:8px;align-items:center}
+.btn{padding:7px 14px;border-radius:6px;border:none;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:.15s}
+.btn-primary{background:var(--accent);color:#0f172a}
+.btn-primary:hover{background:var(--accent2)}
+.btn-secondary{background:var(--border);color:var(--text)}
+.btn-secondary:hover{background:#cbd5e1}
+.btn-danger{background:#fee2e2;color:var(--red)}
+.btn-danger:hover{background:#fecaca}
+.btn-success{background:#d1fae5;color:#065f46}
+.btn-sm{padding:4px 10px;font-size:12px}
+
+.content{padding:24px;flex:1}
+
+/* CARDS */
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px}
+.card-sm{padding:14px}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:24px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px}
+.stat-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
+.stat-value{font-size:26px;font-weight:700;line-height:1}
+.stat-sub{font-size:11px;color:var(--muted);margin-top:4px}
+.stat-accent{border-left:3px solid var(--accent)}
+.stat-green{border-left:3px solid var(--green)}
+.stat-red{border-left:3px solid var(--red)}
+.stat-blue{border-left:3px solid var(--blue)}
+.stat-purple{border-left:3px solid var(--purple)}
+
+/* TABLE */
+.table-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;background:var(--card)}
+th{background:#f8fafc;padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#fafbfc}
+.clickable-row{cursor:pointer}
+
+/* BADGES */
+.badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:12px;font-size:11px;font-weight:600;white-space:nowrap}
+.badge-new{background:#dbeafe;color:#1d4ed8}
+.badge-assigned{background:#ede9fe;color:#6d28d9}
+.badge-inprogress{background:#fef3c7;color:#92400e}
+.badge-review{background:#fee2e2;color:#991b1b}
+.badge-testing{background:#e0f2fe;color:#075985}
+.badge-deployed{background:#d1fae5;color:#065f46}
+.badge-completed{background:#bbf7d0;color:#14532d}
+.badge-closed{background:#f1f5f9;color:#475569}
+.badge-low{background:#f0fdf4;color:#15803d}
+.badge-medium{background:#fefce8;color:#a16207}
+.badge-high{background:#fff7ed;color:#c2410c}
+.badge-critical{background:#fef2f2;color:#b91c1c}
+.badge-critical::before{content:"⚡ "}
+
+/* PRIORITY BARS */
+.priority-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:5px}
+.dot-low{background:var(--green)}
+.dot-medium{background:var(--accent)}
+.dot-high{background:var(--orange)}
+.dot-critical{background:var(--red)}
+
+/* PROGRESS */
+.progress-bar{height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden}
+.progress-fill{height:100%;border-radius:3px;transition:.3s}
+.prog-0{background:#e2e8f0}
+.prog-low{background:var(--red)}
+.prog-mid{background:var(--accent)}
+.prog-high{background:var(--green)}
+
+/* AVATAR */
+.avatar{width:32px;height:32px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+.avatar-sm{width:24px;height:24px;font-size:10px}
+.avatar-lg{width:44px;height:44px;font-size:16px}
+
+/* GRID */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+
+/* FILTERS */
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center}
+.filter-select{padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);font-size:12px}
+.search-input{padding:7px 12px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);min-width:200px}
+.filter-label{font-size:12px;color:var(--muted);white-space:nowrap}
+
+/* MODAL */
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:999;display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto}
+.modal{background:var(--card);border-radius:12px;width:100%;max-width:700px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.modal-lg{max-width:900px}
+.modal-sm{max-width:480px}
+.modal-header{padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--card);z-index:1}
+.modal-header h2{font-size:16px;font-weight:600}
+.modal-body{padding:24px}
+.modal-footer{padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px}
+.close-btn{background:none;border:none;font-size:20px;color:var(--muted);cursor:pointer;padding:0 4px;line-height:1}
+.close-btn:hover{color:var(--text)}
+
+/* FORMS */
+.form-group{margin-bottom:16px}
+.form-label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
+.form-input{width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;background:#fff;color:var(--text);transition:.15s}
+.form-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(245,158,11,.1)}
+.form-textarea{width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;background:#fff;color:var(--text);min-height:80px;resize:vertical}
+.form-select{width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;background:#fff;color:var(--text)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+
+/* KANBAN */
+.kanban-board{display:flex;gap:14px;overflow-x:auto;padding-bottom:12px}
+.kanban-col{min-width:220px;flex-shrink:0}
+.kanban-header{padding:10px 12px;border-radius:8px 8px 0 0;font-weight:600;font-size:12px;display:flex;align-items:center;justify-content:space-between}
+.kanban-cards{background:#f8fafc;border:1px solid var(--border);border-top:none;border-radius:0 0 8px 8px;min-height:80px;padding:8px}
+.kanban-card{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:10px 12px;margin-bottom:8px;cursor:pointer;transition:.15s}
+.kanban-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.08);border-color:#94a3b8}
+.kanban-card-title{font-size:12px;font-weight:600;margin-bottom:6px;line-height:1.3}
+.kanban-card-meta{display:flex;align-items:center;justify-content:space-between}
+
+/* TIMELINE / HISTORY */
+.timeline{padding:0}
+.timeline-item{display:flex;gap:12px;padding:8px 0;border-bottom:1px solid var(--border)}
+.timeline-item:last-child{border-bottom:none}
+.timeline-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);flex-shrink:0;margin-top:5px}
+.timeline-content{flex:1}
+.timeline-date{font-size:10px;color:var(--muted)}
+
+/* DOCS */
+.doc-item{display:flex;align-items:center;gap:10px;padding:8px 12px;background:#f8fafc;border:1px solid var(--border);border-radius:6px;margin-bottom:6px}
+.doc-icon{width:28px;height:28px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
+.doc-name{flex:1;font-size:12px;font-weight:500}
+.doc-link{font-size:11px;color:var(--blue);word-break:break-all}
+
+/* TEAM CARD */
+.member-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;display:flex;align-items:center;gap:14px}
+.member-info h3{font-size:14px;font-weight:600}
+.member-info p{font-size:12px;color:var(--muted)}
+.member-stats{margin-left:auto;text-align:right}
+.member-stats .num{font-size:20px;font-weight:700;color:var(--accent)}
+.member-stats small{font-size:10px;color:var(--muted)}
+
+/* TABS */
+.tabs{display:flex;border-bottom:2px solid var(--border);margin-bottom:20px;gap:0}
+.tab{padding:10px 18px;cursor:pointer;font-size:13px;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px;font-weight:500;transition:.15s}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tab:hover{color:var(--text)}
+
+/* EMPTY STATE */
+.empty{text-align:center;padding:40px 20px;color:var(--muted)}
+.empty-icon{font-size:36px;margin-bottom:12px}
+.empty p{font-size:13px}
+
+/* ALERTS */
+.alert{padding:10px 14px;border-radius:7px;font-size:12px;margin-bottom:12px}
+.alert-warning{background:#fef3c7;border:1px solid #fcd34d;color:#92400e}
+.alert-info{background:#dbeafe;border:1px solid #93c5fd;color:#1e40af}
+.alert-success{background:#d1fae5;border:1px solid #6ee7b7;color:#065f46}
+
+/* SECTION HEADERS */
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.section-title{font-size:15px;font-weight:600}
+.section-sub{font-size:12px;color:var(--muted);margin-top:2px}
+
+/* COMMENTS */
+.comment-item{padding:10px 0;border-bottom:1px solid var(--border)}
+.comment-item:last-child{border-bottom:none}
+.comment-author{font-weight:600;font-size:12px}
+.comment-date{font-size:10px;color:var(--muted);margin-left:8px}
+.comment-text{font-size:12px;color:var(--text);margin-top:4px;line-height:1.5}
+
+/* STATUS FLOW */
+.status-flow{display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin:12px 0}
+.status-step{padding:5px 12px;border-radius:12px;font-size:11px;font-weight:600;border:1.5px solid transparent}
+.status-step.done{background:#d1fae5;border-color:#6ee7b7;color:#065f46}
+.status-step.active{background:var(--accent);border-color:var(--accent2);color:#0f172a}
+.status-step.pending{background:#f1f5f9;border-color:#e2e8f0;color:#94a3b8}
+.status-arrow{color:#cbd5e1;font-size:10px}
+
+/* RESPONSIVE HELPERS */
+.flex{display:flex}
+.flex-center{display:flex;align-items:center}
+.gap-8{gap:8px}
+.gap-12{gap:12px}
+.mb-4{margin-bottom:4px}
+.mb-8{margin-bottom:8px}
+.mb-16{margin-bottom:16px}
+.mb-24{margin-bottom:24px}
+.text-muted{color:var(--muted)}
+.text-sm{font-size:12px}
+.text-xs{font-size:11px}
+.font-600{font-weight:600}
+.w-full{width:100%}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<div id="sidebar">
+  <div class="logo">
+    <h1>SmartSkale</h1>
+    <span>Workflow Manager</span>
+  </div>
+  <div class="user-select">
+    <label>Acting As</label>
+    <select id="currentUserSelect" onchange="setCurrentUser(this.value)">
+      <option value="">— Select Your Name —</option>
+    </select>
+  </div>
+  <nav>
+    <div class="nav-section">Main</div>
+    <div class="nav-item active" onclick="switchView('dashboard')" data-view="dashboard">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      Dashboard
+    </div>
+    <div class="nav-item" onclick="switchView('all-tasks')" data-view="all-tasks">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><polyline points="3,6 4,7 6,5"/><polyline points="3,12 4,13 6,11"/><polyline points="3,18 4,19 6,17"/></svg>
+      All Tasks
+      <span class="nav-badge" id="badge-all">0</span>
+    </div>
+    <div class="nav-item" onclick="switchView('my-tasks')" data-view="my-tasks">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      My Tasks
+      <span class="nav-badge" id="badge-mine">0</span>
+    </div>
+    <div class="nav-item" onclick="switchView('kanban')" data-view="kanban">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="5" height="18" rx="1"/><rect x="10" y="3" width="5" height="12" rx="1"/><rect x="17" y="3" width="5" height="15" rx="1"/></svg>
+      Kanban Board
+    </div>
+    <div class="nav-section">Team</div>
+    <div class="nav-item" onclick="switchView('followups')" data-view="followups">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Follow-ups
+      <span class="nav-badge" id="badge-followup" style="display:none">!</span>
+    </div>
+    <div class="nav-item" onclick="switchView('team')" data-view="team">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Team Directory
+    </div>
+    <div class="nav-section">Analytics</div>
+    <div class="nav-item" onclick="switchView('reports')" data-view="reports">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      Reports & Analytics
+    </div>
+  </nav>
+  <div class="sidebar-footer">
+    <p>SmartSkale v2.0 · Enterprise Edition</p>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+  <div class="topbar">
+    <div class="topbar-title" id="topbarTitle">Dashboard</div>
+    <div class="topbar-actions">
+      <input type="search" class="search-input" placeholder="🔍 Search tasks..." oninput="globalSearch(this.value)" id="globalSearchInput">
+      <button class="btn btn-primary" onclick="openNewTask()">+ New Task</button>
+    </div>
+  </div>
+  <div class="content" id="viewContent"></div>
+</div>
+
+<!-- MODAL CONTAINER -->
+<div id="modalContainer"></div>
+
+<script>
+// ============================================================
+//  STATE & DATA
+// ============================================================
+const STATUSES = ['New','Assigned','In Progress','Under Review','Testing','Deployed','Completed','Closed'];
+const PRIORITIES = ['Low','Medium','High','Critical'];
+const CATEGORIES = ['Development','Design','Testing','DevOps','Business Analysis','Documentation','Support','Research','Management','Other'];
+const DEPLOY_STAGES = ['Not Started','Dev Environment','Staging','UAT','Production','Rolled Back'];
+
+const AVATAR_COLORS = [
+  ['#dbeafe','#1d4ed8'],['#fce7f3','#9d174d'],['#d1fae5','#065f46'],
+  ['#ede9fe','#5b21b6'],['#fef3c7','#92400e'],['#fee2e2','#991b1b'],
+  ['#e0f2fe','#075985'],['#fef9c3','#713f12'],['#f3e8ff','#6b21a8']
+];
+
+function avatarColor(id){
+  const idx = parseInt(id.replace(/\D/g,'')) % AVATAR_COLORS.length;
+  return AVATAR_COLORS[idx];
+}
+
+let state = {
+  view: 'dashboard',
+  currentUser: null,
+  tasks: [],
+  members: [],
+  selectedTask: null,
+  filters: { status:'all', priority:'all', assignee:'all', search:'' }
+};
+
+// ============================================================
+//  SAMPLE DATA
+// ============================================================
+const SEED_MEMBERS = [
+  {id:'m1',name:'Rajesh Kumar',role:'Project Manager',dept:'Management',email:'rajesh.kumar@smartskale.in',phone:'+91-98765-43210'},
+  {id:'m2',name:'Priya Sharma',role:'Frontend Developer',dept:'Engineering',email:'priya.sharma@smartskale.in',phone:'+91-98765-43211'},
+  {id:'m3',name:'Amit Patel',role:'Backend Developer',dept:'Engineering',email:'amit.patel@smartskale.in',phone:'+91-98765-43212'},
+  {id:'m4',name:'Neha Gupta',role:'QA Engineer',dept:'Quality Assurance',email:'neha.gupta@smartskale.in',phone:'+91-98765-43213'},
+  {id:'m5',name:'Vikram Singh',role:'DevOps Engineer',dept:'Infrastructure',email:'vikram.singh@smartskale.in',phone:'+91-98765-43214'},
+  {id:'m6',name:'Anjali Mehta',role:'Business Analyst',dept:'Business',email:'anjali.mehta@smartskale.in',phone:'+91-98765-43215'},
+  {id:'m7',name:'Rohit Joshi',role:'UI/UX Designer',dept:'Design',email:'rohit.joshi@smartskale.in',phone:'+91-98765-43216'},
+  {id:'m8',name:'Deepika Rao',role:'Scrum Master',dept:'Management',email:'deepika.rao@smartskale.in',phone:'+91-98765-43217'},
+];
+
+const today = new Date();
+function daysFromNow(d){ const dt=new Date(today); dt.setDate(dt.getDate()+d); return dt.toISOString().split('T')[0]; }
+function daysAgo(d){ const dt=new Date(today); dt.setDate(dt.getDate()-d); return dt.toISOString().split('T')[0]; }
+
+const SEED_TASKS = [
+  {id:'t1',title:'Redesign Customer Portal Dashboard',desc:'Complete overhaul of the customer-facing dashboard to improve UX. Include new charts, responsive layout, and dark mode support.',assignedTo:'m2',createdBy:'m1',priority:'High',status:'In Progress',progress:65,category:'Design',dueDate:daysFromNow(7),createdAt:daysAgo(12),updatedAt:daysAgo(1),documents:[{id:'d1',name:'Design Specs v2.pdf',url:'https://drive.google.com/file/d/example1',type:'Google Drive',addedAt:daysAgo(10)},{id:'d2',name:'Wireframes.fig',url:'https://www.figma.com/file/example',type:'Figma',addedAt:daysAgo(8)}],followUpDate:daysFromNow(3),transferHistory:[],closeRemarks:null,deploymentStatus:'Not Started',tags:['UI','Dashboard','Sprint-4'],comments:[{id:'c1',author:'m1',text:'Please prioritise the mobile responsive layout first.',date:daysAgo(5)},{id:'c2',author:'m2',text:'Mobile layout done, working on charts now.',date:daysAgo(2)}]},
+  {id:'t2',title:'API Integration for Payment Gateway',desc:'Integrate Razorpay and Paytm payment gateways. Implement webhook handling, retry logic, and reconciliation reports.',assignedTo:'m3',createdBy:'m1',priority:'Critical',status:'Under Review',progress:90,category:'Development',dueDate:daysFromNow(2),createdAt:daysAgo(20),updatedAt:daysAgo(1),documents:[{id:'d3',name:'Razorpay API Docs',url:'https://razorpay.com/docs',type:'Web Link',addedAt:daysAgo(18)},{id:'d4',name:'Payment Flow Diagram',url:'https://confluence.smartskale.in/payment-flow',type:'Confluence',addedAt:daysAgo(15)}],followUpDate:daysFromNow(1),transferHistory:[{from:'m2',to:'m3',reason:'Backend expertise required',date:daysAgo(15)}],closeRemarks:null,deploymentStatus:'Staging',tags:['Payments','API','Critical'],comments:[{id:'c3',author:'m4',text:'QA testing on staging complete. 2 minor bugs found.',date:daysAgo(1)},{id:'c4',author:'m3',text:'Bug fixes pushed. Ready for final review.',date:daysAgo(1)}]},
+  {id:'t3',title:'Database Performance Optimization',desc:'Optimize slow queries in the reporting module. Add indexes, review N+1 problems, implement caching with Redis.',assignedTo:'m3',createdBy:'m8',priority:'High',status:'Deployed',progress:100,category:'Development',dueDate:daysAgo(2),createdAt:daysAgo(30),updatedAt:daysAgo(3),documents:[{id:'d5',name:'Performance Report',url:'https://docs.google.com/spreadsheets/example',type:'Google Sheets',addedAt:daysAgo(25)}],followUpDate:null,transferHistory:[],closeRemarks:null,deploymentStatus:'Production',tags:['Database','Performance'],comments:[]},
+  {id:'t4',title:'Security Audit & Penetration Testing',desc:'Conduct comprehensive security audit. Test for OWASP Top 10 vulnerabilities, SQL injection, XSS, CSRF, and authentication bypass.',assignedTo:'m4',createdBy:'m1',priority:'Critical',status:'In Progress',progress:40,category:'Testing',dueDate:daysFromNow(14),createdAt:daysAgo(5),updatedAt:daysAgo(1),documents:[{id:'d6',name:'Security Checklist',url:'https://sharepoint.smartskale.in/security',type:'SharePoint',addedAt:daysAgo(4)}],followUpDate:daysFromNow(7),transferHistory:[],closeRemarks:null,deploymentStatus:'Not Started',tags:['Security','Audit','Compliance'],comments:[]},
+  {id:'t5',title:'CI/CD Pipeline Setup for Microservices',desc:'Setup automated build, test, and deployment pipeline for all microservices using Jenkins + Docker + Kubernetes.',assignedTo:'m5',createdBy:'m8',priority:'High',status:'Completed',progress:100,category:'DevOps',dueDate:daysAgo(5),createdAt:daysAgo(25),updatedAt:daysAgo(5),documents:[{id:'d7',name:'Pipeline Architecture',url:'https://draw.io/example',type:'draw.io',addedAt:daysAgo(20)}],followUpDate:null,transferHistory:[],closeRemarks:'All pipelines configured and tested. Documentation updated in Confluence. Team trained on deployment process.',deploymentStatus:'Production',tags:['CI/CD','DevOps','Infrastructure'],comments:[{id:'c5',author:'m5',text:'All 8 microservices now have automated pipelines.',date:daysAgo(5)}]},
+  {id:'t6',title:'Q4 Financial Reporting Module',desc:'Build financial reporting module with P&L statements, balance sheet, cash flow analysis, and export to Excel/PDF.',assignedTo:'m6',createdBy:'m1',priority:'Medium',status:'New',progress:0,category:'Business Analysis',dueDate:daysFromNow(21),createdAt:daysAgo(2),updatedAt:daysAgo(2),documents:[],followUpDate:daysFromNow(5),transferHistory:[],closeRemarks:null,deploymentStatus:'Not Started',tags:['Finance','Reporting','Q4'],comments:[]},
+  {id:'t7',title:'Mobile App UI Revamp — Android & iOS',desc:'Complete UI redesign for mobile app aligned with new brand guidelines. Implement design system components.',assignedTo:'m7',createdBy:'m1',priority:'Medium',status:'Assigned',progress:10,category:'Design',dueDate:daysFromNow(30),createdAt:daysAgo(3),updatedAt:daysAgo(1),documents:[{id:'d8',name:'Brand Guidelines 2024',url:'https://www.figma.com/file/brandguide',type:'Figma',addedAt:daysAgo(3)}],followUpDate:daysFromNow(10),transferHistory:[],closeRemarks:null,deploymentStatus:'Not Started',tags:['Mobile','UI','Design'],comments:[]},
+  {id:'t8',title:'Employee Onboarding Portal',desc:'Build self-service onboarding portal for new employees. Document management, form submission, IT asset requests.',assignedTo:'m2',createdBy:'m8',priority:'Low',status:'New',progress:0,category:'Development',dueDate:daysFromNow(45),createdAt:daysAgo(1),updatedAt:daysAgo(1),documents:[],followUpDate:null,transferHistory:[],closeRemarks:null,deploymentStatus:'Not Started',tags:['HR','Onboarding','Portal'],comments:[]},
+  {id:'t9',title:'Load Testing — Peak Traffic Simulation',desc:'Simulate 10x peak load using JMeter. Identify bottlenecks, document results, recommend infrastructure changes.',assignedTo:'m4',createdBy:'m5',priority:'High',status:'Testing',progress:70,category:'Testing',dueDate:daysFromNow(5),createdAt:daysAgo(8),updatedAt:daysAgo(1),documents:[{id:'d9',name:'JMeter Test Plan',url:'https://git.smartskale.in/load-tests',type:'GitLab',addedAt:daysAgo(6)}],followUpDate:daysFromNow(2),transferHistory:[],closeRemarks:null,deploymentStatus:'Dev Environment',tags:['Load Testing','Performance','QA'],comments:[]},
+  {id:'t10',title:'GDPR Compliance Documentation',desc:'Prepare complete GDPR compliance documentation, privacy policy update, data processing agreements with vendors.',assignedTo:'m6',createdBy:'m1',priority:'Critical',status:'Closed',progress:100,category:'Documentation',dueDate:daysAgo(10),createdAt:daysAgo(40),updatedAt:daysAgo(10),documents:[{id:'d10',name:'GDPR Policy v3.pdf',url:'https://sharepoint.smartskale.in/gdpr',type:'SharePoint',addedAt:daysAgo(12)}],followUpDate:null,transferHistory:[],closeRemarks:'All GDPR documentation completed and reviewed by legal team. Published on company intranet. Annual review scheduled for Q3 next year.',deploymentStatus:'Production',tags:['Compliance','GDPR','Legal'],comments:[]},
+];
+
+// ============================================================
+//  STORAGE
+// ============================================================
+function saveData(){
+  localStorage.setItem('ss_tasks', JSON.stringify(state.tasks));
+  localStorage.setItem('ss_members', JSON.stringify(state.members));
+  localStorage.setItem('ss_currentUser', state.currentUser || '');
+}
+function loadData(){
+  const t = localStorage.getItem('ss_tasks');
+  const m = localStorage.getItem('ss_members');
+  const u = localStorage.getItem('ss_currentUser');
+  state.tasks = t ? JSON.parse(t) : JSON.parse(JSON.stringify(SEED_TASKS));
+  state.members = m ? JSON.parse(m) : JSON.parse(JSON.stringify(SEED_MEMBERS));
+  state.currentUser = u || null;
+  if(!t) saveData();
+}
+
+// ============================================================
+//  HELPERS
+// ============================================================
+function uid(){ return 'id_'+Date.now()+'_'+Math.random().toString(36).substr(2,6); }
+function getMember(id){ return state.members.find(m=>m.id===id) }
+function getName(id){ const m=getMember(id); return m?m.name:'Unknown' }
+function getInitials(name){ return name?name.split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase():'?' }
+function formatDate(d){ if(!d) return '—'; const dt=new Date(d); return dt.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) }
+function isOverdue(d,status){ if(!d||['Completed','Closed'].includes(status)) return false; return new Date(d)<new Date() }
+function getAvatarHtml(memberId,size=''){
+  const m=getMember(memberId);
+  if(!m) return `<div class="avatar ${size}" style="background:#e2e8f0;color:#64748b">?</div>`;
+  const [bg,fg]=avatarColor(memberId);
+  return `<div class="avatar ${size}" style="background:${bg};color:${fg}" title="${m.name}">${getInitials(m.name)}</div>`;
+}
+
+function statusBadge(s){
+  const map={
+    'New':'badge-new','Assigned':'badge-assigned','In Progress':'badge-inprogress',
+    'Under Review':'badge-review','Testing':'badge-testing','Deployed':'badge-deployed',
+    'Completed':'badge-completed','Closed':'badge-closed'
+  };
+  return `<span class="badge ${map[s]||''}">${s}</span>`;
+}
+function priorityBadge(p){
+  const map={'Low':'badge-low','Medium':'badge-medium','High':'badge-high','Critical':'badge-critical'};
+  return `<span class="badge ${map[p]||''}">${p}</span>`;
+}
+function progressColor(v){ if(v>=80) return '#10b981'; if(v>=40) return '#f59e0b'; return '#ef4444'; }
+function progressBar(v){ return `<div class="progress-bar" style="width:90px"><div class="progress-fill" style="width:${v}%;background:${progressColor(v)}"></div></div>`; }
+function tasksByMember(id){ return state.tasks.filter(t=>t.assignedTo===id) }
+
+function filteredTasks(){
+  const {status,priority,assignee,search}=state.filters;
+  return state.tasks.filter(t=>{
+    if(status!=='all' && t.status!==status) return false;
+    if(priority!=='all' && t.priority!==priority) return false;
+    if(assignee!=='all' && t.assignedTo!==assignee) return false;
+    if(search){
+      const q=search.toLowerCase();
+      if(!t.title.toLowerCase().includes(q) && !t.desc.toLowerCase().includes(q) && !getName(t.assignedTo).toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+function globalSearch(q){ state.filters.search=q; if(state.view==='all-tasks'||state.view==='my-tasks') renderView(); }
+
+function updateBadges(){
+  const active=state.tasks.filter(t=>!['Completed','Closed'].includes(t.status));
+  document.getElementById('badge-all').textContent=active.length;
+  const mine=state.currentUser?active.filter(t=>t.assignedTo===state.currentUser).length:0;
+  document.getElementById('badge-mine').textContent=mine;
+  const fu=state.tasks.filter(t=>t.followUpDate && new Date(t.followUpDate)<=new Date(Date.now()+2*864e5) && !['Completed','Closed'].includes(t.status));
+  const fub=document.getElementById('badge-followup');
+  fub.style.display=fu.length?'inline':'none';
+  fub.textContent=fu.length;
+}
+
+// ============================================================
+//  NAVIGATION
+// ============================================================
+const VIEW_TITLES = {
+  dashboard:'Dashboard','all-tasks':'All Tasks','my-tasks':'My Tasks',
+  kanban:'Kanban Board',followups:'Follow-up Tracker',team:'Team Directory',reports:'Reports & Analytics'
+};
+function switchView(v){
+  state.view=v;
+  document.querySelectorAll('.nav-item').forEach(el=>{
+    el.classList.toggle('active', el.dataset.view===v);
+  });
+  document.getElementById('topbarTitle').textContent=VIEW_TITLES[v]||v;
+  renderView();
+}
+function setCurrentUser(id){
+  state.currentUser=id||null;
+  saveData();
+  updateBadges();
+  renderView();
+}
+
+function renderView(){
+  const el=document.getElementById('viewContent');
+  switch(state.view){
+    case 'dashboard': el.innerHTML=renderDashboard(); break;
+    case 'all-tasks': el.innerHTML=renderAllTasks(); break;
+    case 'my-tasks': el.innerHTML=renderMyTasks(); break;
+    case 'kanban': el.innerHTML=renderKanban(); break;
+    case 'followups': el.innerHTML=renderFollowups(); break;
+    case 'team': el.innerHTML=renderTeam(); break;
+    case 'reports': el.innerHTML=renderReports(); break;
+  }
+}
+
+// ============================================================
+//  DASHBOARD
+// ============================================================
+function renderDashboard(){
+  const tasks=state.tasks;
+  const active=tasks.filter(t=>!['Completed','Closed'].includes(t.status));
+  const completed=tasks.filter(t=>t.status==='Completed'||t.status==='Closed');
+  const overdue=tasks.filter(t=>isOverdue(t.dueDate,t.status));
+  const critical=tasks.filter(t=>t.priority==='Critical'&&!['Completed','Closed'].includes(t.status));
+  const dueToday=tasks.filter(t=>{
+    if(!t.dueDate||['Completed','Closed'].includes(t.status)) return false;
+    return t.dueDate===new Date().toISOString().split('T')[0];
+  });
+
+  const statusCounts={};
+  STATUSES.forEach(s=>statusCounts[s]=tasks.filter(t=>t.status===s).length);
+
+  const recentTasks=tasks.slice().sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt)).slice(0,6);
+
+  const memberWorkload=state.members.map(m=>{
+    const mt=tasks.filter(t=>t.assignedTo===m.id&&!['Completed','Closed'].includes(t.status));
+    return {m,count:mt.length};
+  }).sort((a,b)=>b.count-a.count).slice(0,5);
+
+  const fu=tasks.filter(t=>t.followUpDate&&!['Completed','Closed'].includes(t.status)).sort((a,b)=>a.followUpDate.localeCompare(b.followUpDate)).slice(0,4);
+
+  return `
+  <div class="stat-grid">
+    <div class="stat-card stat-accent">
+      <div class="stat-label">Active Tasks</div>
+      <div class="stat-value">${active.length}</div>
+      <div class="stat-sub">Total tasks in progress</div>
+    </div>
+    <div class="stat-card stat-green">
+      <div class="stat-label">Completed</div>
+      <div class="stat-value" style="color:var(--green)">${completed.length}</div>
+      <div class="stat-sub">Tasks closed / done</div>
+    </div>
+    <div class="stat-card stat-red">
+      <div class="stat-label">Overdue</div>
+      <div class="stat-value" style="color:var(--red)">${overdue.length}</div>
+      <div class="stat-sub">Past due date</div>
+    </div>
+    <div class="stat-card" style="border-left:3px solid var(--red)">
+      <div class="stat-label">Critical Tasks</div>
+      <div class="stat-value" style="color:var(--red)">${critical.length}</div>
+      <div class="stat-sub">Needs immediate action</div>
+    </div>
+    <div class="stat-card" style="border-left:3px solid var(--blue)">
+      <div class="stat-label">Due Today</div>
+      <div class="stat-value" style="color:var(--blue)">${dueToday.length}</div>
+      <div class="stat-sub">Deadline is today</div>
+    </div>
+    <div class="stat-card" style="border-left:3px solid var(--purple)">
+      <div class="stat-label">Team Members</div>
+      <div class="stat-value" style="color:var(--purple)">${state.members.length}</div>
+      <div class="stat-sub">Active in system</div>
+    </div>
+  </div>
+
+  ${overdue.length ? `<div class="alert alert-warning mb-16">⚠️ <strong>${overdue.length} task(s)</strong> are overdue. Please review and update status immediately.</div>` : ''}
+  ${critical.length ? `<div class="alert alert-info mb-16">🔴 <strong>${critical.length} critical task(s)</strong> require immediate attention from team leads.</div>` : ''}
+
+  <div class="grid-2 mb-24">
+    <div class="card">
+      <div class="section-header mb-8">
+        <div><div class="section-title">Status Distribution</div></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${STATUSES.map(s=>{
+          const c=statusCounts[s]; const pct=tasks.length?Math.round(c/tasks.length*100):0;
+          return `<div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
+              <span>${s}</span><span class="text-muted">${c} tasks · ${pct}%</span>
+            </div>
+            <div class="progress-bar" style="width:100%;height:8px"><div style="width:${pct}%;height:100%;background:${statusColor(s)};border-radius:3px;transition:.3s"></div></div>
+          </div>`
+        }).join('')}
+      </div>
+    </div>
+    <div class="card">
+      <div class="section-header mb-8">
+        <div><div class="section-title">Team Workload (Active Tasks)</div></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        ${memberWorkload.map(({m,count})=>{
+          const pct=active.length?Math.round(count/Math.max(...memberWorkload.map(x=>x.count))*100):0;
+          const [bg,fg]=avatarColor(m.id);
+          return `<div style="display:flex;align-items:center;gap:10px">
+            <div class="avatar avatar-sm" style="background:${bg};color:${fg}">${getInitials(m.name)}</div>
+            <div style="flex:1">
+              <div style="font-size:12px;font-weight:600">${m.name}</div>
+              <div class="progress-bar" style="width:100%;height:6px;margin-top:3px"><div style="width:${pct}%;height:100%;background:${bg==='#dbeafe'?'#3b82f6':fg};border-radius:3px"></div></div>
+            </div>
+            <span style="font-size:13px;font-weight:700;min-width:20px;text-align:right;color:var(--accent)">${count}</span>
+          </div>`;
+        }).join('')}
+        ${memberWorkload.length===0?`<div class="empty"><p>No active tasks</p></div>`:''}
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="section-header">
+        <div><div class="section-title">Recent Activity</div></div>
+        <button class="btn btn-secondary btn-sm" onclick="switchView('all-tasks')">View All</button>
+      </div>
+      ${recentTasks.length===0?`<div class="empty"><div class="empty-icon">📋</div><p>No tasks yet</p></div>`:
+        recentTasks.map(t=>`
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="openTask('${t.id}')">
+          ${getAvatarHtml(t.assignedTo,'avatar-sm')}
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.title}</div>
+            <div style="font-size:11px;color:var(--muted)">${getName(t.assignedTo)} · ${formatDate(t.updatedAt)}</div>
+          </div>
+          ${statusBadge(t.status)}
+        </div>`).join('')}
+    </div>
+    <div class="card">
+      <div class="section-header">
+        <div><div class="section-title">Upcoming Follow-ups</div></div>
+        <button class="btn btn-secondary btn-sm" onclick="switchView('followups')">View All</button>
+      </div>
+      ${fu.length===0?`<div class="empty"><div class="empty-icon">📅</div><p>No follow-ups scheduled</p></div>`:
+        fu.map(t=>{
+          const daysLeft=Math.ceil((new Date(t.followUpDate)-new Date())/864e5);
+          const urgency=daysLeft<=0?'color:var(--red)':daysLeft<=2?'color:var(--orange)':'color:var(--muted)';
+          return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="openTask('${t.id}')">
+            <div style="width:8px;height:8px;border-radius:50%;background:${daysLeft<=0?'var(--red)':daysLeft<=2?'var(--orange)':'var(--green)'};flex-shrink:0"></div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.title}</div>
+              <div style="font-size:11px;${urgency}">${daysLeft<=0?'Overdue!':daysLeft===0?'Today':daysLeft===1?'Tomorrow':`In ${daysLeft} days`} · ${formatDate(t.followUpDate)}</div>
+            </div>
+            ${priorityBadge(t.priority)}
+          </div>`;
+        }).join('')}
+    </div>
+  </div>
+  `;
+}
+
+function statusColor(s){
+  const map={'New':'#3b82f6','Assigned':'#8b5cf6','In Progress':'#f59e0b','Under Review':'#ef4444','Testing':'#06b6d4','Deployed':'#10b981','Completed':'#22c55e','Closed':'#94a3b8'};
+  return map[s]||'#94a3b8';
+}
+
+// ============================================================
+//  ALL TASKS VIEW
+// ============================================================
+function renderFilters(extraFilters=''){
+  return `<div class="filters">
+    <span class="filter-label">Filter:</span>
+    <select class="filter-select" onchange="setFilter('status',this.value)">
+      <option value="all" ${state.filters.status==='all'?'selected':''}>All Status</option>
+      ${STATUSES.map(s=>`<option value="${s}" ${state.filters.status===s?'selected':''}>${s}</option>`).join('')}
+    </select>
+    <select class="filter-select" onchange="setFilter('priority',this.value)">
+      <option value="all" ${state.filters.priority==='all'?'selected':''}>All Priority</option>
+      ${PRIORITIES.map(p=>`<option value="${p}" ${state.filters.priority===p?'selected':''}>${p}</option>`).join('')}
+    </select>
+    <select class="filter-select" onchange="setFilter('assignee',this.value)">
+      <option value="all">All Members</option>
+      ${state.members.map(m=>`<option value="${m.id}" ${state.filters.assignee===m.id?'selected':''}>${m.name}</option>`).join('')}
+    </select>
+    ${extraFilters}
+    <button class="btn btn-secondary btn-sm" onclick="clearFilters()">Clear</button>
+  </div>`;
+}
+
+function setFilter(k,v){ state.filters[k]=v; renderView(); }
+function clearFilters(){ state.filters={status:'all',priority:'all',assignee:'all',search:''}; document.getElementById('globalSearchInput').value=''; renderView(); }
+
+function renderAllTasks(){
+  const tasks=filteredTasks().sort((a,b)=>{
+    const po={Critical:0,High:1,Medium:2,Low:3};
+    return (po[a.priority]??4)-(po[b.priority]??4);
+  });
+  return `
+  ${renderFilters()}
+  <div class="section-header mb-8">
+    <div class="section-sub">${tasks.length} task(s) found</div>
+    <button class="btn btn-primary btn-sm" onclick="openNewTask()">+ New Task</button>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th style="width:36px">#</th>
+        <th>Task Title</th>
+        <th>Assigned To</th>
+        <th>Priority</th>
+        <th>Status</th>
+        <th>Progress</th>
+        <th>Due Date</th>
+        <th>Category</th>
+        <th>Actions</th>
+      </tr></thead>
+      <tbody>
+      ${tasks.length===0?`<tr><td colspan="9"><div class="empty"><div class="empty-icon">🔍</div><p>No tasks match your filters</p></div></td></tr>`:
+        tasks.map((t,i)=>{
+          const ov=isOverdue(t.dueDate,t.status);
+          return `<tr class="clickable-row" onclick="openTask('${t.id}')">
+            <td class="text-muted text-xs">${i+1}</td>
+            <td>
+              <div style="font-weight:600;font-size:13px;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.title}</div>
+              ${t.tags.length?`<div style="margin-top:3px">${t.tags.slice(0,3).map(tg=>`<span style="background:#f1f5f9;color:#475569;font-size:10px;padding:1px 6px;border-radius:8px;margin-right:3px">${tg}</span>`).join('')}</div>`:''}
+            </td>
+            <td>
+              <div style="display:flex;align-items:center;gap:7px">
+                ${getAvatarHtml(t.assignedTo,'avatar-sm')}
+                <span style="font-size:12px">${getName(t.assignedTo)}</span>
+              </div>
+            </td>
+            <td>${priorityBadge(t.priority)}</td>
+            <td>${statusBadge(t.status)}</td>
+            <td>
+              <div style="display:flex;align-items:center;gap:6px">
+                ${progressBar(t.progress)}
+                <span class="text-xs text-muted">${t.progress}%</span>
+              </div>
+            </td>
+            <td style="${ov?'color:var(--red);font-weight:600':''}">
+              ${ov?'⚠️ ':''}${formatDate(t.dueDate)}
+            </td>
+            <td><span class="text-sm text-muted">${t.category}</span></td>
+            <td onclick="event.stopPropagation()">
+              <div style="display:flex;gap:4px">
+                <button class="btn btn-secondary btn-sm" onclick="openTask('${t.id}')">View</button>
+                ${!['Completed','Closed'].includes(t.status)?`<button class="btn btn-sm" style="background:#dbeafe;color:#1d4ed8" onclick="quickProgress('${t.id}')">%</button>`:''}
+              </div>
+            </td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+  </div>`;
+}
+
+// ============================================================
+//  MY TASKS
+// ============================================================
+function renderMyTasks(){
+  if(!state.currentUser) return `<div class="card"><div class="empty"><div class="empty-icon">👤</div><p>Please select your name from the sidebar to view your tasks.</p></div></div>`;
+  const mine=state.tasks.filter(t=>t.assignedTo===state.currentUser);
+  const active=mine.filter(t=>!['Completed','Closed'].includes(t.status));
+  const done=mine.filter(t=>['Completed','Closed'].includes(t.status));
+  const m=getMember(state.currentUser);
+  const [bg,fg]=avatarColor(state.currentUser);
+  return `
+  <div class="card mb-16">
+    <div style="display:flex;align-items:center;gap:14px">
+      <div class="avatar avatar-lg" style="background:${bg};color:${fg}">${getInitials(m?.name||'')}</div>
+      <div>
+        <div style="font-size:18px;font-weight:700">${m?.name||'Unknown'}</div>
+        <div class="text-muted text-sm">${m?.role||''} · ${m?.dept||''}</div>
+        <div class="text-sm mt-4">${m?.email||''} · ${m?.phone||''}</div>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:20px">
+        <div style="text-align:center"><div style="font-size:24px;font-weight:700;color:var(--accent)">${active.length}</div><div class="text-xs text-muted">Active</div></div>
+        <div style="text-align:center"><div style="font-size:24px;font-weight:700;color:var(--green)">${done.length}</div><div class="text-xs text-muted">Done</div></div>
+        <div style="text-align:center"><div style="font-size:24px;font-weight:700;color:var(--red)">${mine.filter(t=>isOverdue(t.dueDate,t.status)).length}</div><div class="text-xs text-muted">Overdue</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="tabs">
+    <div class="tab active" onclick="showMyTab(this,'active')" id="myTabActive">Active Tasks (${active.length})</div>
+    <div class="tab" onclick="showMyTab(this,'done')" id="myTabDone">Completed (${done.length})</div>
+  </div>
+  <div id="myTasksActive">
+    ${active.length===0?`<div class="empty"><div class="empty-icon">✅</div><p>No active tasks — great work!</p></div>`:
+      renderTaskList(active)}
+  </div>
+  <div id="myTasksDone" style="display:none">
+    ${done.length===0?`<div class="empty"><div class="empty-icon">📦</div><p>No completed tasks yet</p></div>`:
+      renderTaskList(done)}
+  </div>`;
+}
+
+function showMyTab(el,tab){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('myTasksActive').style.display=tab==='active'?'block':'none';
+  document.getElementById('myTasksDone').style.display=tab==='done'?'block':'none';
+}
+
+function renderTaskList(tasks){
+  return `<div class="table-wrap"><table>
+    <thead><tr><th>Task</th><th>Priority</th><th>Status</th><th>Progress</th><th>Due Date</th><th>Actions</th></tr></thead>
+    <tbody>
+    ${tasks.map(t=>`<tr class="clickable-row" onclick="openTask('${t.id}')">
+      <td><div style="font-weight:600;font-size:13px">${t.title}</div><div class="text-xs text-muted">${t.category}</div></td>
+      <td>${priorityBadge(t.priority)}</td>
+      <td>${statusBadge(t.status)}</td>
+      <td><div style="display:flex;align-items:center;gap:6px">${progressBar(t.progress)}<span class="text-xs text-muted">${t.progress}%</span></div></td>
+      <td style="${isOverdue(t.dueDate,t.status)?'color:var(--red);font-weight:600':''}">${formatDate(t.dueDate)}</td>
+      <td onclick="event.stopPropagation()"><button class="btn btn-secondary btn-sm" onclick="openTask('${t.id}')">View</button></td>
+    </tr>`).join('')}
+    </tbody>
+  </table></div>`;
+}
+
+// ============================================================
+//  KANBAN
+// ============================================================
+function renderKanban(){
+  const cols=['New','Assigned','In Progress','Under Review','Testing','Deployed','Completed'];
+  const hColors={'New':'#dbeafe','Assigned':'#ede9fe','In Progress':'#fef3c7','Under Review':'#fee2e2','Testing':'#e0f2fe','Deployed':'#d1fae5','Completed':'#bbf7d0'};
+  const tColors={'New':'#1d4ed8','Assigned':'#5b21b6','In Progress':'#92400e','Under Review':'#991b1b','Testing':'#075985','Deployed':'#065f46','Completed':'#14532d'};
+  return `<div class="kanban-board">
+    ${cols.map(col=>{
+      const colTasks=state.tasks.filter(t=>t.status===col);
+      return `<div class="kanban-col">
+        <div class="kanban-header" style="background:${hColors[col]};color:${tColors[col]}">
+          <span>${col}</span><span style="background:rgba(0,0,0,.1);border-radius:10px;padding:1px 8px;font-size:11px">${colTasks.length}</span>
+        </div>
+        <div class="kanban-cards">
+          ${colTasks.length===0?`<div style="color:#94a3b8;font-size:11px;text-align:center;padding:12px">Empty</div>`:''}
+          ${colTasks.map(t=>`
+          <div class="kanban-card" onclick="openTask('${t.id}')">
+            <div class="kanban-card-title">${t.title}</div>
+            <div style="font-size:10px;color:var(--muted);margin-bottom:6px">${t.category}</div>
+            <div class="kanban-card-meta">
+              ${getAvatarHtml(t.assignedTo,'avatar-sm')}
+              ${priorityBadge(t.priority)}
+            </div>
+            ${t.progress>0?`<div class="progress-bar" style="margin-top:8px"><div class="progress-fill" style="width:${t.progress}%;background:${progressColor(t.progress)}"></div></div>`:''}
+            ${isOverdue(t.dueDate,t.status)?`<div style="font-size:10px;color:var(--red);margin-top:4px">⚠️ Overdue: ${formatDate(t.dueDate)}</div>`:`<div style="font-size:10px;color:var(--muted);margin-top:4px">📅 ${formatDate(t.dueDate)}</div>`}
+          </div>`).join('')}
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+// ============================================================
+//  FOLLOW-UPS
+// ============================================================
+function renderFollowups(){
+  const fu=state.tasks.filter(t=>t.followUpDate&&!['Closed'].includes(t.status)).sort((a,b)=>a.followUpDate.localeCompare(b.followUpDate));
+  const overdue=fu.filter(t=>new Date(t.followUpDate)<new Date());
+  const today=fu.filter(t=>t.followUpDate===new Date().toISOString().split('T')[0]);
+  const upcoming=fu.filter(t=>new Date(t.followUpDate)>new Date());
+  function section(title,items,color){
+    if(!items.length) return '';
+    return `<div class="mb-24">
+      <div class="section-header mb-8"><div class="section-title" style="color:${color}">${title} (${items.length})</div></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Task</th><th>Assigned To</th><th>Priority</th><th>Status</th><th>Follow-up Date</th><th>Action</th></tr></thead>
+        <tbody>${items.map(t=>`<tr onclick="openTask('${t.id}')" class="clickable-row">
+          <td><div style="font-weight:600;font-size:13px">${t.title}</div></td>
+          <td><div style="display:flex;align-items:center;gap:7px">${getAvatarHtml(t.assignedTo,'avatar-sm')}<span class="text-sm">${getName(t.assignedTo)}</span></div></td>
+          <td>${priorityBadge(t.priority)}</td>
+          <td>${statusBadge(t.status)}</td>
+          <td style="color:${color};font-weight:600">${formatDate(t.followUpDate)}</td>
+          <td onclick="event.stopPropagation()"><button class="btn btn-secondary btn-sm" onclick="openTask('${t.id}')">View</button></td>
+        </tr>`).join('')}</tbody>
+      </table></div>
+    </div>`;
+  }
+  return `
+  <div class="stat-grid mb-24" style="grid-template-columns:repeat(3,1fr)">
+    <div class="stat-card stat-red"><div class="stat-label">Overdue Follow-ups</div><div class="stat-value" style="color:var(--red)">${overdue.length}</div></div>
+    <div class="stat-card" style="border-left:3px solid var(--orange)"><div class="stat-label">Due Today</div><div class="stat-value" style="color:var(--orange)">${today.length}</div></div>
+    <div class="stat-card" style="border-left:3px solid var(--green)"><div class="stat-label">Upcoming</div><div class="stat-value" style="color:var(--green)">${upcoming.length}</div></div>
+  </div>
+  ${fu.length===0?`<div class="card"><div class="empty"><div class="empty-icon">📅</div><p>No follow-ups scheduled. Add follow-up dates to tasks to track them here.</p></div></div>`:''}
+  ${section('🔴 Overdue Follow-ups',overdue,'var(--red)')}
+  ${section('🟡 Due Today',today,'var(--orange)')}
+  ${section('🟢 Upcoming',upcoming,'var(--green)')}`;
+}
+
+// ============================================================
+//  TEAM DIRECTORY
+// ============================================================
+function renderTeam(){
+  return `
+  <div class="section-header mb-16">
+    <div><div class="section-title">Team Members</div><div class="section-sub">Manage team and view workload</div></div>
+    <button class="btn btn-primary btn-sm" onclick="openAddMember()">+ Add Member</button>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px">
+    ${state.members.map(m=>{
+      const myTasks=tasksByMember(m.id);
+      const active=myTasks.filter(t=>!['Completed','Closed'].includes(t.status));
+      const [bg,fg]=avatarColor(m.id);
+      return `<div class="member-card">
+        <div class="avatar avatar-lg" style="background:${bg};color:${fg}">${getInitials(m.name)}</div>
+        <div class="member-info" style="flex:1">
+          <h3>${m.name}</h3>
+          <p>${m.role}</p>
+          <p style="margin-top:2px">${m.dept}</p>
+          <p style="margin-top:4px;font-size:11px;color:var(--blue)">${m.email}</p>
+          <p style="font-size:11px;color:var(--muted)">${m.phone}</p>
+        </div>
+        <div class="member-stats">
+          <div class="num">${active.length}</div>
+          <small>Active Tasks</small>
+          <div style="margin-top:6px">
+            <button class="btn btn-secondary btn-sm" onclick="viewMemberTasks('${m.id}')">View Tasks</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+function viewMemberTasks(id){
+  state.filters.assignee=id;
+  switchView('all-tasks');
+}
+
+// ============================================================
+//  REPORTS
+// ============================================================
+function renderReports(){
+  const tasks=state.tasks;
+  const statusData=STATUSES.map(s=>({s,c:tasks.filter(t=>t.status===s).length}));
+  const prioData=PRIORITIES.map(p=>({p,c:tasks.filter(t=>t.priority===p).length}));
+  const catData=[...new Set(tasks.map(t=>t.category))].map(c=>({c,count:tasks.filter(t=>t.category===c).length})).sort((a,b)=>b.count-a.count);
+  const memberData=state.members.map(m=>({
+    m,total:tasks.filter(t=>t.assignedTo===m.id).length,
+    active:tasks.filter(t=>t.assignedTo===m.id&&!['Completed','Closed'].includes(t.status)).length,
+    done:tasks.filter(t=>t.assignedTo===m.id&&['Completed','Closed'].includes(t.status)).length,
+    overdue:tasks.filter(t=>t.assignedTo===m.id&&isOverdue(t.dueDate,t.status)).length,
+  })).filter(x=>x.total>0).sort((a,b)=>b.total-a.total);
+  const completed=tasks.filter(t=>['Completed','Closed'].includes(t.status));
+  const completionRate=tasks.length?Math.round(completed.length/tasks.length*100):0;
+  const avgProgress=tasks.length?Math.round(tasks.reduce((a,t)=>a+t.progress,0)/tasks.length):0;
+  return `
+  <div class="stat-grid mb-24">
+    <div class="stat-card stat-accent"><div class="stat-label">Total Tasks</div><div class="stat-value">${tasks.length}</div></div>
+    <div class="stat-card stat-green"><div class="stat-label">Completion Rate</div><div class="stat-value" style="color:var(--green)">${completionRate}%</div></div>
+    <div class="stat-card stat-blue"><div class="stat-label">Avg Progress</div><div class="stat-value" style="color:var(--blue)">${avgProgress}%</div></div>
+    <div class="stat-card stat-red"><div class="stat-label">Overdue Tasks</div><div class="stat-value" style="color:var(--red)">${tasks.filter(t=>isOverdue(t.dueDate,t.status)).length}</div></div>
+  </div>
+  <div class="grid-2 mb-24">
+    <div class="card">
+      <div class="section-title mb-16">Tasks by Status</div>
+      ${statusData.map(({s,c})=>{
+        const pct=tasks.length?Math.round(c/tasks.length*100):0;
+        return `<div style="margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span style="font-weight:500">${s}</span><span class="text-muted">${c} (${pct}%)</span></div>
+          <div class="progress-bar" style="height:10px"><div style="width:${pct}%;height:100%;background:${statusColor(s)};border-radius:3px"></div></div>
+        </div>`;
+      }).join('')}
+    </div>
+    <div class="card">
+      <div class="section-title mb-16">Tasks by Priority</div>
+      ${prioData.map(({p,c})=>{
+        const pct=tasks.length?Math.round(c/tasks.length*100):0;
+        const colors={'Low':'#10b981','Medium':'#f59e0b','High':'#f97316','Critical':'#ef4444'};
+        return `<div style="margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span style="font-weight:500">${p}</span><span class="text-muted">${c} (${pct}%)</span></div>
+          <div class="progress-bar" style="height:10px"><div style="width:${pct}%;height:100%;background:${colors[p]};border-radius:3px"></div></div>
+        </div>`;
+      }).join('')}
+      <div class="section-title mt-16 mb-12">Tasks by Category</div>
+      ${catData.map(({c,count})=>{
+        const pct=tasks.length?Math.round(count/tasks.length*100):0;
+        return `<div style="margin-bottom:8px">
+          <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px"><span>${c}</span><span class="text-muted">${count}</span></div>
+          <div class="progress-bar" style="height:6px"><div style="width:${pct}%;height:100%;background:var(--purple);border-radius:3px"></div></div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>
+  <div class="card">
+    <div class="section-title mb-16">Team Performance Report</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Team Member</th><th>Role</th><th>Total Tasks</th><th>Active</th><th>Completed</th><th>Overdue</th><th>Efficiency</th></tr></thead>
+        <tbody>
+        ${memberData.map(({m,total,active,done,overdue})=>{
+          const eff=total?Math.round(done/total*100):0;
+          const [bg,fg]=avatarColor(m.id);
+          return `<tr>
+            <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar avatar-sm" style="background:${bg};color:${fg}">${getInitials(m.name)}</div><div><div style="font-weight:600;font-size:13px">${m.name}</div></div></div></td>
+            <td class="text-sm text-muted">${m.role}</td>
+            <td><strong>${total}</strong></td>
+            <td><span style="color:var(--accent);font-weight:600">${active}</span></td>
+            <td><span style="color:var(--green);font-weight:600">${done}</span></td>
+            <td><span style="color:${overdue?'var(--red)':'var(--muted)'};font-weight:${overdue?'600':'400'}">${overdue||'—'}</span></td>
+            <td>
+              <div style="display:flex;align-items:center;gap:6px">
+                <div class="progress-bar" style="width:70px;height:8px"><div style="width:${eff}%;height:100%;background:${eff>=70?'var(--green)':eff>=40?'var(--accent)':'var(--red)'};border-radius:3px"></div></div>
+                <span class="text-sm">${eff}%</span>
+              </div>
+            </td>
+          </tr>`;
+        }).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+// ============================================================
+//  TASK DETAIL MODAL
+// ============================================================
+function openTask(id){
+  const t=state.tasks.find(x=>x.id===id);
+  if(!t) return;
+  state.selectedTask=id;
+  const m=getMember(t.assignedTo);
+  const creator=getMember(t.createdBy);
+  const [bg,fg]=avatarColor(t.assignedTo);
+  const statusIdx=STATUSES.indexOf(t.status);
+  const isClosed=t.status==='Closed';
+  const isCompleted=['Completed','Closed'].includes(t.status);
+
+  showModal(`
+  <div class="modal modal-lg" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div>
+        <h2>${t.title}</h2>
+        <div style="display:flex;gap:8px;margin-top:6px">${statusBadge(t.status)} ${priorityBadge(t.priority)} <span class="badge" style="background:#f1f5f9;color:#475569">${t.category}</span></div>
+      </div>
+      <button class="close-btn" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <!-- STATUS FLOW -->
+      <div class="status-flow mb-16">
+        ${STATUSES.map((s,i)=>`
+          <span class="status-step ${i<statusIdx?'done':i===statusIdx?'active':'pending'}">${s}</span>
+          ${i<STATUSES.length-1?'<span class="status-arrow">→</span>':''}
+        `).join('')}
+      </div>
+
+      <div class="grid-2 mb-16">
+        <div class="card card-sm">
+          <div class="form-label">Assigned To</div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="avatar" style="background:${bg};color:${fg}">${getInitials(m?.name||'?')}</div>
+            <div><div style="font-weight:600">${m?.name||'Unassigned'}</div><div class="text-xs text-muted">${m?.role||''}</div></div>
+          </div>
+        </div>
+        <div class="card card-sm">
+          <div class="form-label">Task Details</div>
+          <div class="text-sm"><strong>Created by:</strong> ${creator?.name||'Unknown'}</div>
+          <div class="text-sm mt-4"><strong>Created:</strong> ${formatDate(t.createdAt)}</div>
+          <div class="text-sm mt-4"><strong>Due Date:</strong> <span style="${isOverdue(t.dueDate,t.status)?'color:var(--red);font-weight:600':''}">${formatDate(t.dueDate)}</span></div>
+          <div class="text-sm mt-4"><strong>Deployment:</strong> ${t.deploymentStatus}</div>
+          ${t.followUpDate?`<div class="text-sm mt-4"><strong>Follow-up:</strong> ${formatDate(t.followUpDate)}</div>`:''}
+        </div>
+      </div>
+
+      <div class="card card-sm mb-16">
+        <div class="form-label">Description</div>
+        <div class="text-sm" style="line-height:1.7;color:var(--text)">${t.desc||'No description provided.'}</div>
+        ${t.tags.length?`<div style="margin-top:8px">${t.tags.map(tg=>`<span style="background:#f1f5f9;color:#475569;font-size:11px;padding:2px 8px;border-radius:10px;margin-right:4px">${tg}</span>`).join('')}</div>`:''}
+      </div>
+
+      <!-- PROGRESS -->
+      ${!isClosed?`
+      <div class="card card-sm mb-16">
+        <div class="form-label">Progress — ${t.progress}%</div>
+        <div class="progress-bar" style="height:12px;margin-bottom:8px"><div class="progress-fill" style="width:${t.progress}%;background:${progressColor(t.progress)}"></div></div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <input type="range" min="0" max="100" step="5" value="${t.progress}" style="flex:1" oninput="document.getElementById('progVal').textContent=this.value+'%'" onchange="updateProgress('${t.id}',this.value)">
+          <span id="progVal" style="min-width:36px;font-weight:600;font-size:13px">${t.progress}%</span>
+        </div>
+      </div>`:''}
+
+      <!-- ACTIONS -->
+      ${!isClosed?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+        <button class="btn btn-secondary btn-sm" onclick="openUpdateStatus('${t.id}')">📊 Update Status</button>
+        <button class="btn btn-secondary btn-sm" onclick="openTransfer('${t.id}')">🔄 Transfer Task</button>
+        <button class="btn btn-secondary btn-sm" onclick="openAddDoc('${t.id}')">📎 Add Document</button>
+        <button class="btn btn-secondary btn-sm" onclick="openFollowup('${t.id}')">📅 Set Follow-up</button>
+        <button class="btn btn-secondary btn-sm" onclick="openAddComment('${t.id}')">💬 Add Remark</button>
+        ${!isCompleted?`<button class="btn btn-success btn-sm" onclick="markCompleted('${t.id}')">✅ Mark Completed</button>`:''}
+        <button class="btn btn-danger btn-sm" onclick="openCloseTask('${t.id}')">🔒 Close Task</button>
+        <button class="btn btn-secondary btn-sm" onclick="openEditTask('${t.id}')">✏️ Edit</button>
+      </div>`:''}
+
+      ${t.closeRemarks?`<div class="alert alert-success mb-16"><strong>Close Remarks:</strong> ${t.closeRemarks}</div>`:''}
+
+      <!-- DOCUMENTS -->
+      <div class="mb-16">
+        <div class="section-header mb-8">
+          <div class="font-600">📎 Attached Documents (${t.documents.length})</div>
+        </div>
+        ${t.documents.length===0?`<div class="text-sm text-muted">No documents attached. Click "Add Document" to link files.</div>`:
+          t.documents.map(d=>`
+          <div class="doc-item">
+            <div class="doc-icon" style="background:#dbeafe;color:#1d4ed8">${docIcon(d.type)}</div>
+            <div style="flex:1;min-width:0">
+              <div class="doc-name">${d.name}</div>
+              <a href="${d.url}" target="_blank" class="doc-link">${d.url}</a>
+            </div>
+            <span class="text-xs text-muted">${d.type}</span>
+            ${!isClosed?`<button class="btn btn-sm" style="background:#fee2e2;color:var(--red)" onclick="removeDoc('${t.id}','${d.id}')">✕</button>`:''}
+          </div>`).join('')}
+      </div>
+
+      <!-- TRANSFER HISTORY -->
+      ${t.transferHistory.length?`<div class="mb-16">
+        <div class="font-600 mb-8">🔄 Transfer History</div>
+        <div class="timeline">
+          ${t.transferHistory.map(tr=>`
+          <div class="timeline-item">
+            <div class="timeline-dot"></div>
+            <div class="timeline-content">
+              <div class="text-sm"><strong>${getName(tr.from)}</strong> → <strong>${getName(tr.to)}</strong></div>
+              <div class="text-xs text-muted">Reason: ${tr.reason}</div>
+              <div class="timeline-date">${formatDate(tr.date)}</div>
+            </div>
+          </div>`).join('')}
+        </div>
+      </div>`:''}
+
+      <!-- COMMENTS -->
+      <div>
+        <div class="section-header mb-8">
+          <div class="font-600">💬 Remarks & Comments (${t.comments.length})</div>
+        </div>
+        ${t.comments.length===0?`<div class="text-sm text-muted">No remarks yet.</div>`:
+          t.comments.map(c=>`
+          <div class="comment-item">
+            <div><span class="comment-author">${getName(c.author)}</span><span class="comment-date">${formatDate(c.date)}</span></div>
+            <div class="comment-text">${c.text}</div>
+          </div>`).join('')}
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">Close</button>
+    </div>
+  </div>`);
+}
+
+function docIcon(type){
+  const m={'Google Drive':'G','Figma':'F','Confluence':'C','SharePoint':'S','GitLab':'GL','GitHub':'GH','Google Sheets':'GS','Web Link':'🔗','draw.io':'D','Jira':'J'};
+  return m[type]||'📄';
+}
+
+// ============================================================
+//  MODALS — NEW / EDIT TASK
+// ============================================================
+function openNewTask(){
+  const memberOptions=state.members.map(m=>`<option value="${m.id}">${m.name} — ${m.role}</option>`).join('');
+  showModal(`
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header"><h2>+ Create New Task</h2><button class="close-btn" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">Task Title *</label><input class="form-input" id="nt_title" placeholder="Enter task title..." required></div>
+      <div class="form-group"><label class="form-label">Description</label><textarea class="form-textarea" id="nt_desc" placeholder="Detailed description of the task..."></textarea></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Assign To *</label><select class="form-select" id="nt_assignee"><option value="">— Select Team Member —</option>${memberOptions}</select></div>
+        <div class="form-group"><label class="form-label">Priority *</label><select class="form-select" id="nt_priority">${PRIORITIES.map(p=>`<option value="${p}">${p}</option>`).join('')}</select></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Category</label><select class="form-select" id="nt_category">${CATEGORIES.map(c=>`<option>${c}</option>`).join('')}</select></div>
+        <div class="form-group"><label class="form-label">Due Date *</label><input class="form-input" type="date" id="nt_due"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Deployment Status</label><select class="form-select" id="nt_deploy">${DEPLOY_STAGES.map(d=>`<option>${d}</option>`).join('')}</select></div>
+        <div class="form-group"><label class="form-label">Follow-up Date</label><input class="form-input" type="date" id="nt_followup"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Tags (comma separated)</label><input class="form-input" id="nt_tags" placeholder="Sprint-4, API, Frontend..."></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveNewTask()">Create Task</button>
+    </div>
+  </div>`);
+}
+
+function saveNewTask(){
+  const title=v('nt_title'), assignee=v('nt_assignee'), priority=v('nt_priority'), due=v('nt_due');
+  if(!title||!assignee||!due){ alert('Please fill Title, Assignee, and Due Date.'); return; }
+  const task={
+    id:uid(), title, desc:v('nt_desc'), assignedTo:assignee,
+    createdBy:state.currentUser||state.members[0]?.id||'m1',
+    priority, status:'New', progress:0,
+    category:v('nt_category'), dueDate:due,
+    createdAt:new Date().toISOString().split('T')[0],
+    updatedAt:new Date().toISOString().split('T')[0],
+    documents:[], followUpDate:v('nt_followup')||null,
+    transferHistory:[], closeRemarks:null,
+    deploymentStatus:v('nt_deploy')||'Not Started',
+    tags:v('nt_tags').split(',').map(s=>s.trim()).filter(Boolean),
+    comments:[]
+  };
+  state.tasks.unshift(task);
+  saveData(); closeModal(); updateBadges(); renderView();
+  toast('Task created successfully!');
+}
+
+function openEditTask(id){
+  const t=state.tasks.find(x=>x.id===id);
+  if(!t) return;
+  const memberOptions=state.members.map(m=>`<option value="${m.id}" ${m.id===t.assignedTo?'selected':''}>${m.name} — ${m.role}</option>`).join('');
+  showModal(`
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header"><h2>✏️ Edit Task</h2><button class="close-btn" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">Task Title</label><input class="form-input" id="et_title" value="${esc(t.title)}"></div>
+      <div class="form-group"><label class="form-label">Description</label><textarea class="form-textarea" id="et_desc">${esc(t.desc)}</textarea></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Assigned To</label><select class="form-select" id="et_assignee">${memberOptions}</select></div>
+        <div class="form-group"><label class="form-label">Priority</label><select class="form-select" id="et_priority">${PRIORITIES.map(p=>`<option ${p===t.priority?'selected':''}>${p}</option>`).join('')}</select></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Category</label><select class="form-select" id="et_category">${CATEGORIES.map(c=>`<option ${c===t.category?'selected':''}>${c}</option>`).join('')}</select></div>
+        <div class="form-group"><label class="form-label">Due Date</label><input class="form-input" type="date" id="et_due" value="${t.dueDate||''}"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Deployment Status</label><select class="form-select" id="et_deploy">${DEPLOY_STAGES.map(d=>`<option ${d===t.deploymentStatus?'selected':''}>${d}</option>`).join('')}</select></div>
+        <div class="form-group"><label class="form-label">Follow-up Date</label><input class="form-input" type="date" id="et_followup" value="${t.followUpDate||''}"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Tags (comma separated)</label><input class="form-input" id="et_tags" value="${t.tags.join(', ')}"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteTask('${id}')">Delete</button>
+      <button class="btn btn-primary" onclick="saveEditTask('${id}')">Save Changes</button>
+    </div>
+  </div>`);
+}
+
+function saveEditTask(id){
+  const t=state.tasks.find(x=>x.id===id); if(!t) return;
+  t.title=v('et_title'); t.desc=v('et_desc'); t.assignedTo=v('et_assignee');
+  t.priority=v('et_priority'); t.category=v('et_category'); t.dueDate=v('et_due');
+  t.deploymentStatus=v('et_deploy'); t.followUpDate=v('et_followup')||null;
+  t.tags=v('et_tags').split(',').map(s=>s.trim()).filter(Boolean);
+  t.updatedAt=new Date().toISOString().split('T')[0];
+  saveData(); closeModal(); updateBadges(); renderView(); toast('Task updated!');
+}
+
+function deleteTask(id){
+  if(!confirm('Delete this task permanently?')) return;
+  state.tasks=state.tasks.filter(t=>t.id!==id);
+  saveData(); closeModal(); updateBadges(); renderView(); toast('Task deleted.');
+}
+
+// ============================================================
+//  UPDATE STATUS MODAL
+// ============================================================
+function openUpdateStatus(id){
+  const t=state.tasks.find(x=>x.id===id); if(!t) return;
+  showModal(`
+  <div class="modal modal-sm" onclick="event.stopPropagation()">
+    <div class="modal-header"><h2>📊 Update Status</h2><button class="close-btn" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">Current Status: ${t.status}</label>
+        <select class="form-select" id="us_status">
+          ${STATUSES.map(s=>`<option value="${s}" ${s===t.status?'selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">Deployment Stage</label>
+        <select class="form-select" id="us_deploy">
+          ${DEPLOY_STAGES.map(d=>`<option ${d===t.deploymentStatus?'selected':''}>${d}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">Progress %</label>
+        <input type="range" min="0" max="100" step="5" value="${t.progress}" class="w-full" oninput="document.getElementById('us_pv').textContent=this.value+'%'" id="us_progress">
+        <div style="text-align:right;font-weight:600;margin-top:4px" id="us_pv">${t.progress}%</div>
+      </div>
+      <div class="form-group"><label class="form-label">Remark / Note</label>
+        <textarea class="form-textarea" id="us_remark" placeholder="Add a status update note..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveStatus('${id}')">Update</button>
+    </div>
+  </div>`);
+}
+
+function saveStatus(id){
+  const t=state.tasks.find(x=>x.id===id); if(!t) return;
+  t.status=v('us_status'); t.deploymentStatus=v('us_deploy');
+  t.progress=parseInt(document.getElementById('us_progress').value);
+  t.updatedAt=new Date().toISOString().split('T')[0];
+  const remark=v('us_remark');
+  if(remark && state.currentUser){
+    t.comments.push({id:uid(),author:state.currentUser,text:remark,date:t.updatedAt});
+  }
+  saveData(); closeModal(); updateBadges(); renderView(); toast('Status updated!');
+}
+
+// ============================================================
+//  TRANSFER TASK MODAL
+// ============================================================
+function openTransfer(id){
+  const t=state.tasks.find(x=>x.id===id); if(!t) return;
+  const memberOptions=state.members.filter(m=>m.id!==t.assignedTo).map(m=>`<option value="${m.id}">${m.name} — ${m.role}</option>`).join('');
+  showModal(`
+  <div class="modal modal-sm" onclick="event.stopPropagation()">
+    <div class="modal-header"><h2>🔄 Transfer Task</h2><button class="close-btn" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="alert alert-info mb-16">Currently assigned to: <strong>${getName(t.assignedTo)}</strong></div>
+      <div class="form-group"><label class="form-label">Transfer To *</label>
+        <select class="form-select" id="tr_to"><option value="">— Select Team Member —</option>${memberOptions}</select>
+      </div>
+      <div class="form-group"><label class="form-label">Reason for Transfer *</label>
+        <textarea class="form-textarea" id="tr_reason" placeholder="Explain why the task is being transferred..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTransfer('${id}')">Transfer</button>
+    </div>
+  </div>`);
+}
+
+function saveTransfer(id){
+  const t=state.tasks.find(x=>x.id===id); if(!t) return;
+  const to=v('tr_to'), reason=v('tr_reason');
+  if(!to||!reason){ alert('Please select member and provide a reason.'); return; }
+  t.transferHistory.push({from:t.assignedTo,to,reason,date:new Date().toISOString().split('T')[0]});
+  t.comments.push({id:uid(),author:state.currentUser||t.createdBy,
+    text:`Task transferred from ${getName(t.assignedTo)} to ${getName(to)}. Reason: ${reason}`,
+    date:new Date().toISOString().split('T')[0]});
+  t.assignedTo=to; t.status='Assigned'; t.updatedAt=new Date().toISOString().split('T')[0];
+  saveData(); closeModal(); updateBadges(); renderView(); toast(`Task transferred to ${getName(to)}!`);
+}
+
+// ============================================================
+//  ADD DOCUMENT
+// ============================================================
+function openAddDoc(id){
+  showModal(`
+  <div class="modal modal-sm" onclick="event.stopPropagation()">
+    <div class="modal-header"><h2>📎 Add Document</h2><button class="close-btn" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">Document Name *</label><input class="form-input" id="doc_name" placeholder="e.g., Design Specs v2.pdf"></div>
+      <div class="form-group"><label class="form-label">URL / Link *</label><input class="form-input" id="doc_url" placeholder="https://drive.google.com/..."></div>
+      <div class="form-group"><label class="form-label">Storage Type</label>
+        <select class="form-select" id="doc_type">
+          ${['Google Drive','SharePoint','Confluence','Jira','Figma','GitLab','GitHub','Google Sheets','draw.io','OneDrive','Dropbox','Web Link','Other'].map(t=>`<option>${t}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveDoc('${id}')">Attach Document</button>
+    </div>
+  </div>`);
+}
+
+function saveDoc(id){
+  const t=state.tasks.find(x=>x.id===id); if(!t) return;
+  const name=v('doc_name'), url=v('doc_url');
+  if(!name||!url){ alert('Name and URL are required.'); return; }
+  t.documents.push({id:uid(),name,url,type:v('doc_type'),addedAt:new Date().toISOString().split('T')[0]});
+  t.updatedAt=new Date().toISOString().split('T')[0];
+  saveData(); closeModal(); openTask(id); toast('Document attached!');
+}
+
+function removeDoc(taskId,docId){
+  const t=state.tasks.find(x=>x.id===taskId); if(!t) return;
+  if(!confirm('Remove this document?')) return;
+  t.documents=t.documents.filter(d=>d.id!==docId);
+  saveData(); openTask(taskId); toast('Document removed.');
+}
+
+// ============================================================
+//  FOLLOW-UP
+// ============================================================
+function openFollowup(id){
+  const t=state.tasks.find(x=>x.id===id); if(!t) return;
+  showModal(`
+  <div class="modal modal-sm" onclick="event.stopPropagation()">
+    <div class="modal-header"><h2>📅 Set Follow-up</h2><button class="close-btn" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">Follow-up Date</label><input class="form-input" type="date" id="fu_date" value="${t.followUpDate||''}"></div>
+      <div class="form-group"><label class="form-label">Follow-up Note</label><textarea class="form-textarea" id="fu_note" placeholder="What needs to be checked on follow-up date?"></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      ${t.followUpDate?`<button class="btn btn-danger btn-sm" onclick="clearFollowup('${id}')">Clear</button>`:''}
+      <button class="btn btn-primary" onclick="saveFollowup('${id}')">Set Follow-up</button>
+    </div>
+  </div>`);
+}
+
+function saveFollowup(id){
+  const t=state.tasks.find(x=>x.id===id); if(!t) return;
+  t.followUpDate=v('fu_date')||null;
+  const note=v('fu_note');
+  if(note && state.currentUser) t.comments.push({id:uid(),author:state.currentUser,text:`Follow-up note: ${note}`,date:new Date().toISOString().split('T')[0]});
+  saveData(); closeModal(); updateBadges(); renderView(); toast('Follow-up set!');
+}
+
+function clearFollowup(id){
+  const t=state.tasks.find(x=>x.id===id); if(!t) return;
+  t.followUpDate=null; saveData(); closeModal(); updateBadges(); renderView(); toast('Follow-up cleared.');
+}
+
+// ============================================================
+//  ADD COMMENT
+// ============================================================
+function openAddComment(id){
+  showModal(`
+  <div class="modal modal-sm" onclick="event.stopPropagation()">
+    <div class="modal-header"><h2>💬 Add Remark</h2><button class="close-btn" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      ${!state.currentUser?`<div class="alert alert-warning">Please select your name from the sidebar first.</div>`:''}
+      <div class="form-group"><label class="form-label">Your Remark *</label><textarea class="form-textarea" id="cm_text" placeholder="Add your update, remark, or comment..." style="min-height:120px"></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveComment('${id}')">Post Remark</button>
+    </div>
+  </div>`);
+}
+
+function saveComment(id){
+  const t=state.tasks.find(x=>x.id===id); if(!t) return;
+  const text=v('cm_text'); if(!text){ alert('Please enter a remark.'); return; }
+  const author=state.currentUser||t.createdBy;
+  t.comments.push({id:uid(),author,text,date:new Date().toISOString().split('T')[0]});
+  t.updatedAt=new Date().toISOString().split('T')[0];
+  saveData(); closeModal(); openTask(id); toast('Remark added!');
+}
+
+// ============================================================
+//  CLOSE TASK
+// ============================================================
+function openCloseTask(id){
+  const t=state.tasks.find(x=>x.id===id); if(!t) return;
+  showModal(`
+  <div class="modal modal-sm" onclick="event.stopPropagation()">
+    <div class="modal-header"><h2>🔒 Close Task</h2><button class="close-btn" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="alert alert-warning mb-16">You are about to close this task permanently. Please provide closure remarks.</div>
+      <div class="form-group"><label class="form-label">Closure Remarks * (mandatory)</label>
+        <textarea class="form-textarea" id="cr_text" placeholder="Summarise what was done, any outstanding items, links to deliverables..." style="min-height:120px"></textarea>
+      </div>
+      <div class="form-group"><label class="form-label">Final Deployment Stage</label>
+        <select class="form-select" id="cr_deploy">
+          ${DEPLOY_STAGES.map(d=>`<option ${d===(t.deploymentStatus||'Not Started')?'selected':''}>${d}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-danger" onclick="saveCloseTask('${id}')">Close Task</button>
+    </div>
+  </div>`);
+}
+
+function saveCloseTask(id){
+  const t=state.tasks.find(x=>x.id===id); if(!t) return;
+  const remarks=v('cr_text'); if(!remarks){ alert('Closure remarks are mandatory.'); return; }
+  t.closeRemarks=remarks; t.status='Closed'; t.progress=100;
+  t.deploymentStatus=v('cr_deploy');
+  t.updatedAt=new Date().toISOString().split('T')[0];
+  saveData(); closeModal(); updateBadges(); renderView(); toast('Task closed.');
+}
+
+// ============================================================
+//  MARK COMPLETED
+// ============================================================
+function markCompleted(id){
+  const t=state.tasks.find(x=>x.id===id); if(!t) return;
+  if(!confirm('Mark this task as Completed?')) return;
+  t.status='Completed'; t.progress=100; t.updatedAt=new Date().toISOString().split('T')[0];
+  saveData(); closeModal(); updateBadges(); renderView(); toast('Task marked Completed!');
+}
+
+function quickProgress(id){
+  const t=state.tasks.find(x=>x.id===id); if(!t) return;
+  openUpdateStatus(id);
+}
+
+// ============================================================
+//  ADD MEMBER
+// ============================================================
+function openAddMember(){
+  showModal(`
+  <div class="modal modal-sm" onclick="event.stopPropagation()">
+    <div class="modal-header"><h2>+ Add Team Member</h2><button class="close-btn" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">Full Name *</label><input class="form-input" id="nm_name" placeholder="Aakash Verma"></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Role / Designation *</label><input class="form-input" id="nm_role" placeholder="Senior Developer"></div>
+        <div class="form-group"><label class="form-label">Department</label><input class="form-input" id="nm_dept" placeholder="Engineering"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Email</label><input class="form-input" type="email" id="nm_email" placeholder="aakash@company.in"></div>
+        <div class="form-group"><label class="form-label">Phone</label><input class="form-input" id="nm_phone" placeholder="+91-"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveNewMember()">Add Member</button>
+    </div>
+  </div>`);
+}
+
+function saveNewMember(){
+  const name=v('nm_name'), role=v('nm_role');
+  if(!name||!role){ alert('Name and Role are required.'); return; }
+  const id='m'+Date.now();
+  state.members.push({id,name,role,dept:v('nm_dept')||'General',email:v('nm_email'),phone:v('nm_phone')});
+  saveData(); populateUserSelect(); closeModal(); renderView(); toast(`${name} added to team!`);
+}
+
+// ============================================================
+//  MODAL HELPERS
+// ============================================================
+function showModal(html){
+  const c=document.getElementById('modalContainer');
+  c.innerHTML=`<div class="modal-backdrop" onclick="closeModal()">${html}</div>`;
+}
+function closeModal(){ document.getElementById('modalContainer').innerHTML=''; }
+function v(id){ return (document.getElementById(id)?.value||'').trim(); }
+function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ============================================================
+//  UPDATE PROGRESS (inline)
+// ============================================================
+function updateProgress(id,val){
+  const t=state.tasks.find(x=>x.id===id); if(!t) return;
+  t.progress=parseInt(val); t.updatedAt=new Date().toISOString().split('T')[0];
+  if(t.progress===100 && !['Completed','Closed'].includes(t.status)) t.status='Completed';
+  saveData(); updateBadges();
+}
+
+// ============================================================
+//  TOAST
+// ============================================================
+function toast(msg){
+  let el=document.getElementById('toast');
+  if(!el){ el=document.createElement('div'); el.id='toast'; document.body.appendChild(el);
+    Object.assign(el.style,{position:'fixed',bottom:'24px',right:'24px',background:'#0f172a',color:'#fff',padding:'10px 20px',borderRadius:'8px',fontSize:'13px',fontWeight:'600',zIndex:'9999',transition:'opacity .3s',boxShadow:'0 4px 16px rgba(0,0,0,.2)'}); }
+  el.textContent=msg; el.style.opacity='1';
+  clearTimeout(el._t); el._t=setTimeout(()=>el.style.opacity='0',2800);
+}
+
+// ============================================================
+//  INIT
+// ============================================================
+function populateUserSelect(){
+  const sel=document.getElementById('currentUserSelect');
+  sel.innerHTML='<option value="">— Select Your Name —</option>'+state.members.map(m=>`<option value="${m.id}" ${m.id===state.currentUser?'selected':''}>${m.name}</option>`).join('');
+}
+
+function init(){
+  loadData();
+  populateUserSelect();
+  updateBadges();
+  renderView();
+}
+
+init();
+</script>
+</body>
+</html>

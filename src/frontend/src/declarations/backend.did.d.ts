@@ -10,7 +10,143 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
-export interface _SERVICE {}
+export type ProjectStatus = { 'PLANNING' : null } |
+  { 'ACTIVE' : null } |
+  { 'ON_HOLD' : null } |
+  { 'COMPLETED' : null } |
+  { 'CANCELLED' : null };
+export type Priority = { 'LOW' : null } |
+  { 'MEDIUM' : null } |
+  { 'HIGH' : null } |
+  { 'URGENT' : null };
+export type TaskStatus = { 'TODO' : null } |
+  { 'IN_PROGRESS' : null } |
+  { 'IN_REVIEW' : null } |
+  { 'DONE' : null };
+export type NotifType = { 'TASK_ASSIGNED' : null } |
+  { 'TASK_UPDATED' : null } |
+  { 'DOC_UPDATED' : null } |
+  { 'PROJECT_UPDATED' : null };
+export type EntityType = { 'TASK' : null } | { 'DOCUMENT' : null };
+export type UserRole = { 'ADMIN' : null } | { 'MANAGER' : null } | { 'EMPLOYEE' : null };
+export interface UserProfile {
+  'id' : Principal,
+  'name' : string,
+  'role' : string,
+  'department' : string,
+  'email' : string,
+  'phone' : string,
+  'userRole' : UserRole,
+  'createdAt' : bigint,
+  'updatedAt' : bigint,
+}
+
+
+export interface Project {
+  'id' : string,
+  'name' : string,
+  'description' : string,
+  'status' : ProjectStatus,
+  'priority' : Priority,
+  'ownerId' : Principal,
+  'memberIds' : Array<Principal>,
+  'createdAt' : bigint,
+  'updatedAt' : bigint,
+  'dueDate' : [] | [bigint],
+}
+export interface Task {
+  'id' : string,
+  'projectId' : string,
+  'title' : string,
+  'description' : string,
+  'status' : TaskStatus,
+  'priority' : Priority,
+  'assigneeId' : [] | [Principal],
+  'reporterId' : Principal,
+  'createdAt' : bigint,
+  'updatedAt' : bigint,
+  'dueDate' : [] | [bigint],
+  'tags' : Array<string>,
+}
+export interface Document {
+  'id' : string,
+  'projectId' : string,
+  'title' : string,
+  'content' : string,
+  'authorId' : Principal,
+  'createdAt' : bigint,
+  'updatedAt' : bigint,
+  'version' : bigint,
+  'fileUrl' : [] | [string],
+}
+export interface Notification {
+  'id' : string,
+  'userId' : Principal,
+  'message' : string,
+  'notifType' : NotifType,
+  'relatedId' : string,
+  'isRead' : boolean,
+  'createdAt' : bigint,
+}
+export interface Comment {
+  'id' : string,
+  'entityId' : string,
+  'entityType' : EntityType,
+  'authorId' : Principal,
+  'content' : string,
+  'createdAt' : bigint,
+}
+export interface Activity {
+  'id' : string,
+  'actorId' : Principal,
+  'action' : string,
+  'entityType' : string,
+  'entityId' : string,
+  'timestamp' : bigint,
+}
+export interface DashboardStats {
+  'totalProjects' : bigint,
+  'totalTasks' : bigint,
+  'todoCount' : bigint,
+  'inProgressCount' : bigint,
+  'inReviewCount' : bigint,
+  'doneCount' : bigint,
+  'recentActivities' : Array<Activity>,
+}
+
+export interface _SERVICE {
+  '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
+  'createProject' : ActorMethod<[string, string, ProjectStatus, Priority, [] | [bigint]], Project>,
+  'getProjects' : ActorMethod<[], Array<Project>>,
+  'getProject' : ActorMethod<[string], [] | [Project]>,
+  'updateProject' : ActorMethod<[string, string, string, ProjectStatus, Priority, [] | [bigint], Array<Principal>], [] | [Project]>,
+  'deleteProject' : ActorMethod<[string], boolean>,
+  'createTask' : ActorMethod<[string, string, string, TaskStatus, Priority, [] | [Principal], [] | [bigint], Array<string>], Task>,
+  'getTasks' : ActorMethod<[], Array<Task>>,
+  'getTasksByProject' : ActorMethod<[string], Array<Task>>,
+  'getTask' : ActorMethod<[string], [] | [Task]>,
+  'updateTask' : ActorMethod<[string, string, string, TaskStatus, Priority, [] | [Principal], [] | [bigint], Array<string>], [] | [Task]>,
+  'deleteTask' : ActorMethod<[string], boolean>,
+  'createDocument' : ActorMethod<[string, string, string, [] | [string]], Document>,
+  'getDocuments' : ActorMethod<[], Array<Document>>,
+  'getDocumentsByProject' : ActorMethod<[string], Array<Document>>,
+  'getDocument' : ActorMethod<[string], [] | [Document]>,
+  'updateDocument' : ActorMethod<[string, string, string, [] | [string]], [] | [Document]>,
+  'deleteDocument' : ActorMethod<[string], boolean>,
+  'getMyNotifications' : ActorMethod<[], Array<Notification>>,
+  'markNotificationRead' : ActorMethod<[string], boolean>,
+  'markAllNotificationsRead' : ActorMethod<[], bigint>,
+  'addComment' : ActorMethod<[string, EntityType, string], Comment>,
+  'getComments' : ActorMethod<[string], Array<Comment>>,
+  'deleteComment' : ActorMethod<[string], boolean>,
+  'getRecentActivity' : ActorMethod<[bigint], Array<Activity>>,
+  'getDashboardStats' : ActorMethod<[], DashboardStats>,
+  'registerProfile' : ActorMethod<[string, string, string, string, string, UserRole], UserProfile>,
+  'getMyProfile' : ActorMethod<[], [] | [UserProfile]>,
+  'getAllProfiles' : ActorMethod<[], Array<UserProfile>>,
+  'getProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
+  'updateProfile' : ActorMethod<[string, string, string, string, string, UserRole], [] | [UserProfile]>,
+}
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];
 export declare const idlFactory: IDL.InterfaceFactory;

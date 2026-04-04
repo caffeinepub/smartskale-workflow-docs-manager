@@ -8,11 +8,27 @@ export type Priority = { LOW: null } | { MEDIUM: null } | { HIGH: null } | { URG
 export type TaskStatus = { TODO: null } | { IN_PROGRESS: null } | { IN_REVIEW: null } | { DONE: null };
 export type NotifType = { TASK_ASSIGNED: null } | { TASK_UPDATED: null } | { DOC_UPDATED: null } | { PROJECT_UPDATED: null };
 export type EntityType = { TASK: null } | { DOCUMENT: null };
+export type UserRole = { ADMIN: null } | { MANAGER: null } | { EMPLOYEE: null };
 
 export interface Project {
   id: string;
   name: string;
   description: string;
+  status: ProjectStatus;
+  priority: Priority;
+  ownerId: Principal;
+  memberIds: Principal[];
+  createdAt: bigint;
+  updatedAt: bigint;
+  dueDate: [] | [bigint];
+}
+
+export interface SubProject {
+  id: string;
+  parentProjectId: string;
+  name: string;
+  description: string;
+  category: string;
   status: ProjectStatus;
   priority: Priority;
   ownerId: Principal;
@@ -87,12 +103,31 @@ export interface DashboardStats {
   recentActivities: Activity[];
 }
 
+export interface UserProfile {
+  id: Principal;
+  name: string;
+  role: string;
+  department: string;
+  email: string;
+  phone: string;
+  userRole: UserRole;
+  createdAt: bigint;
+  updatedAt: bigint;
+}
+
 export interface backendInterface {
   createProject(name: string, description: string, status: ProjectStatus, priority: Priority, dueDate: [] | [bigint]): Promise<Project>;
   getProjects(): Promise<Project[]>;
   getProject(id: string): Promise<[] | [Project]>;
   updateProject(id: string, name: string, description: string, status: ProjectStatus, priority: Priority, dueDate: [] | [bigint], memberIds: Principal[]): Promise<[] | [Project]>;
   deleteProject(id: string): Promise<boolean>;
+
+  createSubProject(parentProjectId: string, name: string, description: string, category: string, status: ProjectStatus, priority: Priority, dueDate: [] | [bigint]): Promise<SubProject>;
+  getSubProjects(): Promise<SubProject[]>;
+  getSubProjectsByParent(parentProjectId: string): Promise<SubProject[]>;
+  getSubProject(id: string): Promise<[] | [SubProject]>;
+  updateSubProject(id: string, name: string, description: string, category: string, status: ProjectStatus, priority: Priority, dueDate: [] | [bigint], memberIds: Principal[]): Promise<[] | [SubProject]>;
+  deleteSubProject(id: string): Promise<boolean>;
 
   createTask(projectId: string, title: string, description: string, status: TaskStatus, priority: Priority, assigneeId: [] | [Principal], dueDate: [] | [bigint], tags: string[]): Promise<Task>;
   getTasks(): Promise<Task[]>;
@@ -118,4 +153,12 @@ export interface backendInterface {
 
   getRecentActivity(limit: bigint): Promise<Activity[]>;
   getDashboardStats(): Promise<DashboardStats>;
+
+  registerProfile(name: string, role: string, department: string, email: string, phone: string, userRole: UserRole): Promise<UserProfile>;
+  getMyProfile(): Promise<[] | [UserProfile]>;
+  getAllProfiles(): Promise<UserProfile[]>;
+  getProfile(principal: Principal): Promise<[] | [UserProfile]>;
+  updateProfile(name: string, role: string, department: string, email: string, phone: string, userRole: UserRole): Promise<[] | [UserProfile]>;
+
+  _initializeAccessControlWithSecret(secret: string): Promise<undefined>;
 }

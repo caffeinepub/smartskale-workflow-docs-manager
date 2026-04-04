@@ -1,5 +1,6 @@
 import {
   Calendar,
+  FolderGit2,
   FolderKanban,
   KanbanSquare,
   MoreVertical,
@@ -38,6 +39,11 @@ import {
 } from "../components/ui/dropdown-menu";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "../components/ui/popover";
 import { Progress } from "../components/ui/progress";
 import {
   Select,
@@ -68,6 +74,14 @@ const PRIORITY_COLORS: Record<string, string> = {
   URGENT: "bg-red-100 text-red-700",
 };
 
+const ALL_STATUSES = [
+  "PLANNING",
+  "ACTIVE",
+  "ON_HOLD",
+  "COMPLETED",
+  "CANCELLED",
+] as const;
+
 type FormState = {
   name: string;
   description: string;
@@ -93,17 +107,21 @@ export function Projects({ navigate }: Props) {
   const [tasks, setTasks] = useState<{ projectId: string; done: boolean }[]>(
     [],
   );
+  const [subProjectCounts, setSubProjectCounts] = useState<
+    Record<string, number>
+  >({});
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editProject, setEditProject] = useState<Project | null>(null);
   const [deleteProject, setDeleteProject] = useState<Project | null>(null);
   const [form, setForm] = useState<FormState>(DEFAULT_FORM);
   const [saving, setSaving] = useState(false);
+  const [statusPopover, setStatusPopover] = useState<string | null>(null);
 
   const load = () => {
     if (!actor) return;
-    Promise.all([actor.getProjects(), actor.getTasks()])
-      .then(([p, t]) => {
+    Promise.all([actor.getProjects(), actor.getTasks(), actor.getSubProjects()])
+      .then(([p, t, sp]) => {
         setProjects(p);
         setTasks(
           t.map((task) => ({
@@ -111,6 +129,12 @@ export function Projects({ navigate }: Props) {
             done: getKey(task.status) === "DONE",
           })),
         );
+        // Build sub-project count map
+        const counts: Record<string, number> = {};
+        for (const s of sp) {
+          counts[s.parentProjectId] = (counts[s.parentProjectId] || 0) + 1;
+        }
+        setSubProjectCounts(counts);
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -182,6 +206,26 @@ export function Projects({ navigate }: Props) {
     }
   };
 
+  const quickChangeStatus = async (project: Project, newStatus: string) => {
+    if (!actor) return;
+    try {
+      await actor.updateProject(
+        project.id,
+        project.name,
+        project.description,
+        { [newStatus]: null } as ProjectStatus,
+        project.priority,
+        project.dueDate,
+        project.memberIds,
+      );
+      toast.success(`Status changed to ${newStatus.replace(/_/g, " ")}`);
+      setStatusPopover(null);
+      load();
+    } catch {
+      toast.error("Failed to update status");
+    }
+  };
+
   const doDelete = async () => {
     if (!actor || !deleteProject) return;
     try {
@@ -203,7 +247,7 @@ export function Projects({ navigate }: Props) {
             {projects.length} project{projects.length !== 1 ? "s" : ""}
           </p>
         </div>
-        <Button onClick={openCreate}>
+        <Button data-ocid="projects.new_project.button" onClick={openCreate}>
           <Plus className="h-4 w-4 mr-1" /> New Project
         </Button>
       </div>
@@ -215,7 +259,7 @@ export function Projects({ navigate }: Props) {
           ))}
         </div>
       ) : projects.length === 0 ? (
-        <div className="text-center py-20">
+        <div className="text-center py-20" data-ocid="projects.empty_state">
           <FolderKanban className="h-14 w-14 text-slate-200 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-slate-600 mb-1">
             No projects yet
@@ -229,7 +273,7 @@ export function Projects({ navigate }: Props) {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {projects.map((p) => {
+          {projects.map((p, idx) => {
             const pTasks = tasks.filter((t) => t.projectId === p.id);
             const pct =
               pTasks.length > 0
@@ -239,10 +283,12 @@ export function Projects({ navigate }: Props) {
                 : 0;
             const statusKey = getKey(p.status);
             const priorityKey = getKey(p.priority);
+            const spCount = subProjectCounts[p.id] || 0;
             return (
               <Card
                 key={p.id}
                 className="border-0 shadow-sm hover:shadow-md transition-shadow"
+                data-ocid={`projects.item.${idx + 1}`}
               >
                 <CardContent className="p-5">
                   <div className="flex items-start justify-between mb-3">
@@ -292,11 +338,40 @@ export function Projects({ navigate }: Props) {
                   </div>
 
                   <div className="flex flex-wrap gap-1.5 mb-3">
-                    <Badge
-                      className={`text-xs py-0 ${STATUS_COLORS[statusKey] || ""}`}
+                    {/* Clickable status badge with Popover */}
+                    <Popover
+                      open={statusPopover === p.id}
+                      onOpenChange={(open) =>
+                        setStatusPopover(open ? p.id : null)
+                      }
                     >
-                      {statusKey.replace("_", " ")}
-                    </Badge>
+                      <PopoverTrigger asChild>
+                        <button type="button">
+                          <Badge
+                            className={`text-xs py-0 cursor-pointer hover:opacity-80 transition-opacity ${STATUS_COLORS[statusKey] || ""}`}
+                          >
+                            {statusKey.replace(/_/g, " ")}
+                          </Badge>
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-44 p-1" align="start">
+                        <p className="text-xs text-slate-500 px-2 py-1 font-semibold">
+                          Change Status
+                        </p>
+                        {ALL_STATUSES.map((s) => (
+                          <button
+                            key={s}
+                            type="button"
+                            className={`w-full text-left px-2 py-1.5 text-xs rounded hover:bg-slate-100 transition-colors ${
+                              s === statusKey ? "font-semibold" : ""
+                            }`}
+                            onClick={() => quickChangeStatus(p, s)}
+                          >
+                            {s.replace(/_/g, " ")}
+                          </button>
+                        ))}
+                      </PopoverContent>
+                    </Popover>
                     <Badge
                       className={`text-xs py-0 ${PRIORITY_COLORS[priorityKey] || ""}`}
                     >
@@ -314,6 +389,16 @@ export function Projects({ navigate }: Props) {
                     </div>
                     <Progress value={pct} className="h-1.5" />
                   </div>
+
+                  {/* Sub-project count */}
+                  {spCount > 0 && (
+                    <div className="mt-2 flex items-center gap-1 text-xs text-teal-600">
+                      <FolderGit2 className="h-3 w-3" />
+                      <span>
+                        {spCount} sub-project{spCount !== 1 ? "s" : ""}
+                      </span>
+                    </div>
+                  )}
 
                   <div className="flex items-center justify-between mt-3">
                     {p.dueDate.length > 0 ? (
@@ -340,7 +425,7 @@ export function Projects({ navigate }: Props) {
 
       {/* Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
+        <DialogContent data-ocid="projects.project.dialog">
           <DialogHeader>
             <DialogTitle>
               {editProject ? "Edit Project" : "New Project"}
@@ -350,6 +435,7 @@ export function Projects({ navigate }: Props) {
             <div>
               <Label>Name *</Label>
               <Input
+                data-ocid="projects.project_name.input"
                 value={form.name}
                 onChange={(e) =>
                   setForm((f) => ({ ...f, name: e.target.value }))
@@ -385,7 +471,7 @@ export function Projects({ navigate }: Props) {
                       "CANCELLED",
                     ].map((s) => (
                       <SelectItem key={s} value={s}>
-                        {s.replace("_", " ")}
+                        {s.replace(/_/g, " ")}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -422,10 +508,18 @@ export function Projects({ navigate }: Props) {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>
+            <Button
+              variant="outline"
+              data-ocid="projects.cancel_project.button"
+              onClick={() => setDialogOpen(false)}
+            >
               Cancel
             </Button>
-            <Button onClick={save} disabled={saving || !form.name.trim()}>
+            <Button
+              data-ocid="projects.save_project.button"
+              onClick={save}
+              disabled={saving || !form.name.trim()}
+            >
               {saving ? "Saving..." : "Save"}
             </Button>
           </DialogFooter>
@@ -446,9 +540,12 @@ export function Projects({ navigate }: Props) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel data-ocid="projects.delete_project_cancel.button">
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               className="bg-red-600 hover:bg-red-700"
+              data-ocid="projects.delete_project_confirm.button"
               onClick={doDelete}
             >
               Delete

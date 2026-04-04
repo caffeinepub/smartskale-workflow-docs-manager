@@ -8,10 +8,363 @@
 
 import { IDL } from '@icp-sdk/core/candid';
 
-export const idlService = IDL.Service({});
+const ProjectStatus = IDL.Variant({
+  'PLANNING': IDL.Null,
+  'ACTIVE': IDL.Null,
+  'ON_HOLD': IDL.Null,
+  'COMPLETED': IDL.Null,
+  'CANCELLED': IDL.Null,
+});
+
+const Priority = IDL.Variant({
+  'LOW': IDL.Null,
+  'MEDIUM': IDL.Null,
+  'HIGH': IDL.Null,
+  'URGENT': IDL.Null,
+});
+
+const TaskStatus = IDL.Variant({
+  'TODO': IDL.Null,
+  'IN_PROGRESS': IDL.Null,
+  'IN_REVIEW': IDL.Null,
+  'DONE': IDL.Null,
+});
+
+const NotifType = IDL.Variant({
+  'TASK_ASSIGNED': IDL.Null,
+  'TASK_UPDATED': IDL.Null,
+  'DOC_UPDATED': IDL.Null,
+  'PROJECT_UPDATED': IDL.Null,
+});
+
+const EntityType = IDL.Variant({
+  'TASK': IDL.Null,
+  'DOCUMENT': IDL.Null,
+});
+
+const UserRole = IDL.Variant({
+  'ADMIN': IDL.Null,
+  'MANAGER': IDL.Null,
+  'EMPLOYEE': IDL.Null,
+});
+
+const UserProfile = IDL.Record({
+  'id': IDL.Principal,
+  'name': IDL.Text,
+  'role': IDL.Text,
+  'department': IDL.Text,
+  'email': IDL.Text,
+  'phone': IDL.Text,
+  'userRole': UserRole,
+  'createdAt': IDL.Int,
+  'updatedAt': IDL.Int,
+});
+
+const Project = IDL.Record({
+  'id': IDL.Text,
+  'name': IDL.Text,
+  'description': IDL.Text,
+  'status': ProjectStatus,
+  'priority': Priority,
+  'ownerId': IDL.Principal,
+  'memberIds': IDL.Vec(IDL.Principal),
+  'createdAt': IDL.Int,
+  'updatedAt': IDL.Int,
+  'dueDate': IDL.Opt(IDL.Int),
+});
+
+const SubProject = IDL.Record({
+  'id': IDL.Text,
+  'parentProjectId': IDL.Text,
+  'name': IDL.Text,
+  'description': IDL.Text,
+  'category': IDL.Text,
+  'status': ProjectStatus,
+  'priority': Priority,
+  'ownerId': IDL.Principal,
+  'memberIds': IDL.Vec(IDL.Principal),
+  'createdAt': IDL.Int,
+  'updatedAt': IDL.Int,
+  'dueDate': IDL.Opt(IDL.Int),
+});
+
+const Task = IDL.Record({
+  'id': IDL.Text,
+  'projectId': IDL.Text,
+  'title': IDL.Text,
+  'description': IDL.Text,
+  'status': TaskStatus,
+  'priority': Priority,
+  'assigneeId': IDL.Opt(IDL.Principal),
+  'reporterId': IDL.Principal,
+  'createdAt': IDL.Int,
+  'updatedAt': IDL.Int,
+  'dueDate': IDL.Opt(IDL.Int),
+  'tags': IDL.Vec(IDL.Text),
+});
+
+const Document = IDL.Record({
+  'id': IDL.Text,
+  'projectId': IDL.Text,
+  'title': IDL.Text,
+  'content': IDL.Text,
+  'authorId': IDL.Principal,
+  'createdAt': IDL.Int,
+  'updatedAt': IDL.Int,
+  'version': IDL.Nat,
+  'fileUrl': IDL.Opt(IDL.Text),
+});
+
+const Notification = IDL.Record({
+  'id': IDL.Text,
+  'userId': IDL.Principal,
+  'message': IDL.Text,
+  'notifType': NotifType,
+  'relatedId': IDL.Text,
+  'isRead': IDL.Bool,
+  'createdAt': IDL.Int,
+});
+
+const Comment = IDL.Record({
+  'id': IDL.Text,
+  'entityId': IDL.Text,
+  'entityType': EntityType,
+  'authorId': IDL.Principal,
+  'content': IDL.Text,
+  'createdAt': IDL.Int,
+});
+
+const Activity = IDL.Record({
+  'id': IDL.Text,
+  'actorId': IDL.Principal,
+  'action': IDL.Text,
+  'entityType': IDL.Text,
+  'entityId': IDL.Text,
+  'timestamp': IDL.Int,
+});
+
+const DashboardStats = IDL.Record({
+  'totalProjects': IDL.Nat,
+  'totalTasks': IDL.Nat,
+  'todoCount': IDL.Nat,
+  'inProgressCount': IDL.Nat,
+  'inReviewCount': IDL.Nat,
+  'doneCount': IDL.Nat,
+  'recentActivities': IDL.Vec(Activity),
+});
+
+export const idlService = IDL.Service({
+  '_initializeAccessControlWithSecret': IDL.Func([IDL.Text], [], []),
+  'createProject': IDL.Func([IDL.Text, IDL.Text, ProjectStatus, Priority, IDL.Opt(IDL.Int)], [Project], []),
+  'getProjects': IDL.Func([], [IDL.Vec(Project)], ['query']),
+  'getProject': IDL.Func([IDL.Text], [IDL.Opt(Project)], ['query']),
+  'updateProject': IDL.Func([IDL.Text, IDL.Text, IDL.Text, ProjectStatus, Priority, IDL.Opt(IDL.Int), IDL.Vec(IDL.Principal)], [IDL.Opt(Project)], []),
+  'deleteProject': IDL.Func([IDL.Text], [IDL.Bool], []),
+  'createSubProject': IDL.Func([IDL.Text, IDL.Text, IDL.Text, IDL.Text, ProjectStatus, Priority, IDL.Opt(IDL.Int)], [SubProject], []),
+  'getSubProjects': IDL.Func([], [IDL.Vec(SubProject)], ['query']),
+  'getSubProjectsByParent': IDL.Func([IDL.Text], [IDL.Vec(SubProject)], ['query']),
+  'getSubProject': IDL.Func([IDL.Text], [IDL.Opt(SubProject)], ['query']),
+  'updateSubProject': IDL.Func([IDL.Text, IDL.Text, IDL.Text, IDL.Text, ProjectStatus, Priority, IDL.Opt(IDL.Int), IDL.Vec(IDL.Principal)], [IDL.Opt(SubProject)], []),
+  'deleteSubProject': IDL.Func([IDL.Text], [IDL.Bool], []),
+  'createTask': IDL.Func([IDL.Text, IDL.Text, IDL.Text, TaskStatus, Priority, IDL.Opt(IDL.Principal), IDL.Opt(IDL.Int), IDL.Vec(IDL.Text)], [Task], []),
+  'getTasks': IDL.Func([], [IDL.Vec(Task)], ['query']),
+  'getTasksByProject': IDL.Func([IDL.Text], [IDL.Vec(Task)], ['query']),
+  'getTask': IDL.Func([IDL.Text], [IDL.Opt(Task)], ['query']),
+  'updateTask': IDL.Func([IDL.Text, IDL.Text, IDL.Text, TaskStatus, Priority, IDL.Opt(IDL.Principal), IDL.Opt(IDL.Int), IDL.Vec(IDL.Text)], [IDL.Opt(Task)], []),
+  'deleteTask': IDL.Func([IDL.Text], [IDL.Bool], []),
+  'createDocument': IDL.Func([IDL.Text, IDL.Text, IDL.Text, IDL.Opt(IDL.Text)], [Document], []),
+  'getDocuments': IDL.Func([], [IDL.Vec(Document)], ['query']),
+  'getDocumentsByProject': IDL.Func([IDL.Text], [IDL.Vec(Document)], ['query']),
+  'getDocument': IDL.Func([IDL.Text], [IDL.Opt(Document)], ['query']),
+  'updateDocument': IDL.Func([IDL.Text, IDL.Text, IDL.Text, IDL.Opt(IDL.Text)], [IDL.Opt(Document)], []),
+  'deleteDocument': IDL.Func([IDL.Text], [IDL.Bool], []),
+  'getMyNotifications': IDL.Func([], [IDL.Vec(Notification)], ['query']),
+  'markNotificationRead': IDL.Func([IDL.Text], [IDL.Bool], []),
+  'markAllNotificationsRead': IDL.Func([], [IDL.Nat], []),
+  'addComment': IDL.Func([IDL.Text, EntityType, IDL.Text], [Comment], []),
+  'getComments': IDL.Func([IDL.Text], [IDL.Vec(Comment)], ['query']),
+  'deleteComment': IDL.Func([IDL.Text], [IDL.Bool], []),
+  'getRecentActivity': IDL.Func([IDL.Nat], [IDL.Vec(Activity)], ['query']),
+  'getDashboardStats': IDL.Func([], [DashboardStats], ['query']),
+  'registerProfile': IDL.Func([IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Text, UserRole], [UserProfile], []),
+  'getMyProfile': IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
+  'getAllProfiles': IDL.Func([], [IDL.Vec(UserProfile)], ['query']),
+  'getProfile': IDL.Func([IDL.Principal], [IDL.Opt(UserProfile)], ['query']),
+  'updateProfile': IDL.Func([IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Text, UserRole], [IDL.Opt(UserProfile)], []),
+});
 
 export const idlInitArgs = [];
 
-export const idlFactory = ({ IDL }) => { return IDL.Service({}); };
+export const idlFactory = ({ IDL }) => {
+  const ProjectStatus = IDL.Variant({
+    'PLANNING': IDL.Null,
+    'ACTIVE': IDL.Null,
+    'ON_HOLD': IDL.Null,
+    'COMPLETED': IDL.Null,
+    'CANCELLED': IDL.Null,
+  });
+  const Priority = IDL.Variant({
+    'LOW': IDL.Null,
+    'MEDIUM': IDL.Null,
+    'HIGH': IDL.Null,
+    'URGENT': IDL.Null,
+  });
+  const TaskStatus = IDL.Variant({
+    'TODO': IDL.Null,
+    'IN_PROGRESS': IDL.Null,
+    'IN_REVIEW': IDL.Null,
+    'DONE': IDL.Null,
+  });
+  const NotifType = IDL.Variant({
+    'TASK_ASSIGNED': IDL.Null,
+    'TASK_UPDATED': IDL.Null,
+    'DOC_UPDATED': IDL.Null,
+    'PROJECT_UPDATED': IDL.Null,
+  });
+  const EntityType = IDL.Variant({
+    'TASK': IDL.Null,
+    'DOCUMENT': IDL.Null,
+  });
+  const UserRole = IDL.Variant({
+    'ADMIN': IDL.Null,
+    'MANAGER': IDL.Null,
+    'EMPLOYEE': IDL.Null,
+  });
+  const UserProfile = IDL.Record({
+    'id': IDL.Principal,
+    'name': IDL.Text,
+    'role': IDL.Text,
+    'department': IDL.Text,
+    'email': IDL.Text,
+    'phone': IDL.Text,
+    'userRole': UserRole,
+    'createdAt': IDL.Int,
+    'updatedAt': IDL.Int,
+  });
+  const Project = IDL.Record({
+    'id': IDL.Text,
+    'name': IDL.Text,
+    'description': IDL.Text,
+    'status': ProjectStatus,
+    'priority': Priority,
+    'ownerId': IDL.Principal,
+    'memberIds': IDL.Vec(IDL.Principal),
+    'createdAt': IDL.Int,
+    'updatedAt': IDL.Int,
+    'dueDate': IDL.Opt(IDL.Int),
+  });
+  const SubProject = IDL.Record({
+    'id': IDL.Text,
+    'parentProjectId': IDL.Text,
+    'name': IDL.Text,
+    'description': IDL.Text,
+    'category': IDL.Text,
+    'status': ProjectStatus,
+    'priority': Priority,
+    'ownerId': IDL.Principal,
+    'memberIds': IDL.Vec(IDL.Principal),
+    'createdAt': IDL.Int,
+    'updatedAt': IDL.Int,
+    'dueDate': IDL.Opt(IDL.Int),
+  });
+  const Task = IDL.Record({
+    'id': IDL.Text,
+    'projectId': IDL.Text,
+    'title': IDL.Text,
+    'description': IDL.Text,
+    'status': TaskStatus,
+    'priority': Priority,
+    'assigneeId': IDL.Opt(IDL.Principal),
+    'reporterId': IDL.Principal,
+    'createdAt': IDL.Int,
+    'updatedAt': IDL.Int,
+    'dueDate': IDL.Opt(IDL.Int),
+    'tags': IDL.Vec(IDL.Text),
+  });
+  const Document = IDL.Record({
+    'id': IDL.Text,
+    'projectId': IDL.Text,
+    'title': IDL.Text,
+    'content': IDL.Text,
+    'authorId': IDL.Principal,
+    'createdAt': IDL.Int,
+    'updatedAt': IDL.Int,
+    'version': IDL.Nat,
+    'fileUrl': IDL.Opt(IDL.Text),
+  });
+  const Notification = IDL.Record({
+    'id': IDL.Text,
+    'userId': IDL.Principal,
+    'message': IDL.Text,
+    'notifType': NotifType,
+    'relatedId': IDL.Text,
+    'isRead': IDL.Bool,
+    'createdAt': IDL.Int,
+  });
+  const Comment = IDL.Record({
+    'id': IDL.Text,
+    'entityId': IDL.Text,
+    'entityType': EntityType,
+    'authorId': IDL.Principal,
+    'content': IDL.Text,
+    'createdAt': IDL.Int,
+  });
+  const Activity = IDL.Record({
+    'id': IDL.Text,
+    'actorId': IDL.Principal,
+    'action': IDL.Text,
+    'entityType': IDL.Text,
+    'entityId': IDL.Text,
+    'timestamp': IDL.Int,
+  });
+  const DashboardStats = IDL.Record({
+    'totalProjects': IDL.Nat,
+    'totalTasks': IDL.Nat,
+    'todoCount': IDL.Nat,
+    'inProgressCount': IDL.Nat,
+    'inReviewCount': IDL.Nat,
+    'doneCount': IDL.Nat,
+    'recentActivities': IDL.Vec(Activity),
+  });
+  return IDL.Service({
+    '_initializeAccessControlWithSecret': IDL.Func([IDL.Text], [], []),
+    'createProject': IDL.Func([IDL.Text, IDL.Text, ProjectStatus, Priority, IDL.Opt(IDL.Int)], [Project], []),
+    'getProjects': IDL.Func([], [IDL.Vec(Project)], ['query']),
+    'getProject': IDL.Func([IDL.Text], [IDL.Opt(Project)], ['query']),
+    'updateProject': IDL.Func([IDL.Text, IDL.Text, IDL.Text, ProjectStatus, Priority, IDL.Opt(IDL.Int), IDL.Vec(IDL.Principal)], [IDL.Opt(Project)], []),
+    'deleteProject': IDL.Func([IDL.Text], [IDL.Bool], []),
+    'createSubProject': IDL.Func([IDL.Text, IDL.Text, IDL.Text, IDL.Text, ProjectStatus, Priority, IDL.Opt(IDL.Int)], [SubProject], []),
+    'getSubProjects': IDL.Func([], [IDL.Vec(SubProject)], ['query']),
+    'getSubProjectsByParent': IDL.Func([IDL.Text], [IDL.Vec(SubProject)], ['query']),
+    'getSubProject': IDL.Func([IDL.Text], [IDL.Opt(SubProject)], ['query']),
+    'updateSubProject': IDL.Func([IDL.Text, IDL.Text, IDL.Text, IDL.Text, ProjectStatus, Priority, IDL.Opt(IDL.Int), IDL.Vec(IDL.Principal)], [IDL.Opt(SubProject)], []),
+    'deleteSubProject': IDL.Func([IDL.Text], [IDL.Bool], []),
+    'createTask': IDL.Func([IDL.Text, IDL.Text, IDL.Text, TaskStatus, Priority, IDL.Opt(IDL.Principal), IDL.Opt(IDL.Int), IDL.Vec(IDL.Text)], [Task], []),
+    'getTasks': IDL.Func([], [IDL.Vec(Task)], ['query']),
+    'getTasksByProject': IDL.Func([IDL.Text], [IDL.Vec(Task)], ['query']),
+    'getTask': IDL.Func([IDL.Text], [IDL.Opt(Task)], ['query']),
+    'updateTask': IDL.Func([IDL.Text, IDL.Text, IDL.Text, TaskStatus, Priority, IDL.Opt(IDL.Principal), IDL.Opt(IDL.Int), IDL.Vec(IDL.Text)], [IDL.Opt(Task)], []),
+    'deleteTask': IDL.Func([IDL.Text], [IDL.Bool], []),
+    'createDocument': IDL.Func([IDL.Text, IDL.Text, IDL.Text, IDL.Opt(IDL.Text)], [Document], []),
+    'getDocuments': IDL.Func([], [IDL.Vec(Document)], ['query']),
+    'getDocumentsByProject': IDL.Func([IDL.Text], [IDL.Vec(Document)], ['query']),
+    'getDocument': IDL.Func([IDL.Text], [IDL.Opt(Document)], ['query']),
+    'updateDocument': IDL.Func([IDL.Text, IDL.Text, IDL.Text, IDL.Opt(IDL.Text)], [IDL.Opt(Document)], []),
+    'deleteDocument': IDL.Func([IDL.Text], [IDL.Bool], []),
+    'getMyNotifications': IDL.Func([], [IDL.Vec(Notification)], ['query']),
+    'markNotificationRead': IDL.Func([IDL.Text], [IDL.Bool], []),
+    'markAllNotificationsRead': IDL.Func([], [IDL.Nat], []),
+    'addComment': IDL.Func([IDL.Text, EntityType, IDL.Text], [Comment], []),
+    'getComments': IDL.Func([IDL.Text], [IDL.Vec(Comment)], ['query']),
+    'deleteComment': IDL.Func([IDL.Text], [IDL.Bool], []),
+    'getRecentActivity': IDL.Func([IDL.Nat], [IDL.Vec(Activity)], ['query']),
+    'getDashboardStats': IDL.Func([], [DashboardStats], ['query']),
+    'registerProfile': IDL.Func([IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Text, UserRole], [UserProfile], []),
+    'getMyProfile': IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
+    'getAllProfiles': IDL.Func([], [IDL.Vec(UserProfile)], ['query']),
+    'getProfile': IDL.Func([IDL.Principal], [IDL.Opt(UserProfile)], ['query']),
+    'updateProfile': IDL.Func([IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Text, UserRole], [IDL.Opt(UserProfile)], []),
+  });
+};
 
 export const init = ({ IDL }) => { return []; };
