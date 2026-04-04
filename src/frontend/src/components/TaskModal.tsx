@@ -3,6 +3,7 @@ import {
   ArrowDown,
   ArrowUp,
   Clock,
+  Loader2,
   Minus,
   Plus,
   Trash2,
@@ -365,7 +366,10 @@ export function TaskModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent
+        className="max-w-2xl max-h-[90vh] overflow-y-auto"
+        data-ocid="task.dialog"
+      >
         <DialogHeader>
           <DialogTitle className="text-lg font-semibold">
             {mode === "create" ? "Create new task" : "Edit task"}
@@ -380,6 +384,7 @@ export function TaskModal({
             </Label>
             <Input
               id="tm-title"
+              data-ocid="task.input"
               placeholder="What needs to be done?"
               value={form.title}
               onChange={(e) => set("title", e.target.value)}
@@ -387,7 +392,9 @@ export function TaskModal({
               autoFocus
             />
             {errors.title && (
-              <p className="text-xs text-red-500">{errors.title}</p>
+              <p className="text-xs text-red-500" data-ocid="task.error_state">
+                {errors.title}
+              </p>
             )}
           </div>
 
@@ -396,6 +403,7 @@ export function TaskModal({
             <Label htmlFor="tm-desc">Description</Label>
             <Textarea
               id="tm-desc"
+              data-ocid="task.textarea"
               placeholder="Add details, context, or acceptance criteria..."
               value={form.description}
               onChange={(e) => set("description", e.target.value)}
@@ -415,6 +423,7 @@ export function TaskModal({
                 onValueChange={(v) => set("projectId", v)}
               >
                 <SelectTrigger
+                  data-ocid="task.select"
                   className={errors.projectId ? "border-red-400" : ""}
                 >
                   <SelectValue placeholder="Select project..." />
@@ -441,7 +450,7 @@ export function TaskModal({
                 value={form.status}
                 onValueChange={(v) => set("status", v as TaskStatusKey)}
               >
-                <SelectTrigger>
+                <SelectTrigger data-ocid="task.tab">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -604,14 +613,16 @@ export function TaskModal({
 
             {/* Subtask list */}
             <div className="space-y-1.5 mt-1">
-              {form.subtasks.map((s) => (
+              {form.subtasks.map((s, idx) => (
                 <div
                   key={s.id}
+                  data-ocid={`task.item.${idx + 1}`}
                   className="flex items-center gap-2 group p-1 rounded hover:bg-slate-50"
                 >
                   <Checkbox
                     checked={s.completed}
                     onCheckedChange={() => toggleSubtask(s.id)}
+                    data-ocid={`task.checkbox.${idx + 1}`}
                   />
                   <span
                     className={`flex-1 text-sm ${
@@ -625,6 +636,7 @@ export function TaskModal({
                   <button
                     type="button"
                     onClick={() => deleteSubtask(s.id)}
+                    data-ocid={`task.delete_button.${idx + 1}`}
                     className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 transition-all"
                   >
                     <Trash2 size={13} />
@@ -646,7 +658,12 @@ export function TaskModal({
                   }
                 }}
               />
-              <Button variant="outline" size="sm" onClick={addSubtask}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={addSubtask}
+                data-ocid="task.secondary_button"
+              >
                 <Plus size={14} />
               </Button>
             </div>
@@ -658,15 +675,25 @@ export function TaskModal({
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={saving}
+            data-ocid="task.cancel_button"
           >
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={saving}>
-            {saving
-              ? "Saving..."
-              : mode === "create"
-                ? "Create task"
-                : "Save changes"}
+          <Button
+            onClick={handleSubmit}
+            disabled={saving}
+            data-ocid="task.submit_button"
+          >
+            {saving ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Saving...
+              </>
+            ) : mode === "create" ? (
+              "Create task"
+            ) : (
+              "Save changes"
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -693,6 +720,7 @@ export function CreateTaskButton({
       <button
         type="button"
         onClick={() => setOpen(true)}
+        data-ocid="task.open_modal_button"
         className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-primary text-primary-foreground rounded-full px-4 py-3 shadow-lg hover:shadow-xl hover:scale-105 transition-all font-medium text-sm"
       >
         <Plus size={18} />
